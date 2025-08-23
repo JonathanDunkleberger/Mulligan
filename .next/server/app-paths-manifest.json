@@ -1,0 +1,8 @@
+{
+  "/page": "app/page.js",
+  "/mymedia/page": "app/mymedia/page.js",
+  "/api/popular/route": "app/api/popular/route.js",
+  "/api/search/route": "app/api/search/route.js",
+  "/detail/[source]/[category]/[sourceId]/page": "app/detail/[source]/[category]/[sourceId]/page.js",
+  "/browse/page": "app/browse/page.js"
+}

@@ -1,0 +1,26 @@
+{
+  "name": "mulligan",
+  "version": "0.2.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "firebase": "10.12.4",
+    "next": "14.2.5",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "20.12.12",
+    "@types/react": "18.2.69",
+    "@types/react-dom": "18.2.22",
+    "eslint": "8.57.0",
+    "eslint-config-next": "14.2.5",
+    "typescript": "5.4.5"
+  }
+}

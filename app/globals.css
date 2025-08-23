@@ -1,0 +1,127 @@
+:root{
+  --bg:#0b0b0f; --fg:#e8e8ef; --muted:#9aa0aa;
+  --brand:#8b5cf6; --panel:#12121a; --card:#151520; --border:#222232;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  background:var(--bg); color:var(--fg);
+  font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;
+  overflow-x:hidden; /* never let the page scroll sideways */
+}
+a{color:inherit;text-decoration:none}
+img{display:block;max-width:100%}
+
+/* ===== LAYOUT ===== */
+
+/* Full-width grid (content + favorites).
+   Reduced gap + minimal sidebar padding = no visible gutter. */
+.container{
+  display:grid;
+  grid-template-columns: minmax(0,1fr) 260px;
+  gap:8px;                 /* was 16px */
+  max-width:none;
+  width:100%;
+  padding:88px 0 24px 0;   /* zero LHS padding so it bleeds */
+  margin:0;
+}
+
+/* Sticky search bar below the topbar */
+.header{ position:sticky; top:60px; z-index:5 }
+.searchWrap{ max-width:800px; margin:0 auto; text-align:center }
+.search{
+  width:100%; max-width:760px; border-radius:14px;
+  border:1px solid var(--border); background:var(--panel);
+  padding:16px 18px; color:var(--fg); font-size:16px; outline:none
+}
+.modeRow{ display:flex; gap:10px; justify-content:center; margin-top:10px }
+
+.sectionTitle{ margin:10px 8px 8px; font-weight:700 }
+.rail{ margin:6px 0 18px }
+
+/* Search grid */
+.gridResults{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+  gap:10px; padding:0 12px;
+}
+
+/* Sidebar: minimal padding, no overflow-caused gutter */
+.sidebar{
+  position:sticky; top:88px;
+  height:calc(100vh - 100px);
+  overflow:auto;
+  padding-left:4px;        /* was 6–12 */
+  padding-right:4px;       /* was 12 */
+  min-width:0;
+}
+
+/* Buttons / badges */
+.btn{ background:var(--card); border:1px solid var(--border); color:var(--fg); padding:8px 12px; border-radius:10px; cursor:pointer }
+.btnPrimary{ background:var(--brand); border-color:transparent; color:white }
+.badge{ display:inline-block; background:var(--card); border:1px solid var(--border); border-radius:999px; padding:4px 10px; font-size:12px; color:var(--muted) }
+
+/* Top sticky nav */
+.topbar{
+  position:sticky; top:0; width:100%;
+  background:rgba(10,10,15,.7); backdrop-filter:saturate(140%) blur(8px);
+  border-bottom:1px solid var(--border); z-index:10;
+}
+.topbarInner{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 16px;
+}
+.logo{ display:flex; align-items:center; gap:8px }
+.logo .word{ font-weight:800; color:var(--brand); font-size:20px }
+.nav{ display:flex; gap:10px }
+
+/* ===== TILE ===== */
+.tile{
+  position:relative; border-radius:12px; overflow:hidden;
+  background:#111; border:1px solid #1f1f2b; width:150px; flex:none;
+}
+.tile img{ width:100%; height:225px; object-fit:cover }
+.tile .hud{
+  position:absolute; inset:0;
+  background:linear-gradient(to top,rgba(0,0,0,.6),transparent 50%);
+  opacity:0; transition:opacity .18s, transform .18s
+}
+.tile:hover .hud{ opacity:1 }
+.tile:hover{ transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,.35) }
+.tile .hudInner{
+  position:absolute; bottom:6px; left:6px; right:6px;
+  display:flex; gap:6px; flex-wrap:wrap; align-items:center
+}
+.hud .pill{ background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); color:#fff; padding:4px 8px; border-radius:999px; font-size:12px }
+.hud .btnIcon{ background:#fff; color:#000; border:0; border-radius:8px; padding:6px 8px; cursor:pointer }
+
+/* ===== CAROUSEL ===== */
+.carousel{ position:relative; padding:0 8px }
+.carouselScroll{
+  overflow-x:auto; overflow-y:hidden;
+  scroll-snap-type:x proximity;
+  -webkit-overflow-scrolling:touch;
+  padding-bottom:8px;
+  max-width:100vw; /* ensures rails don't create full-page horiz scroll */
+}
+.carouselInner{
+  display:grid;
+  grid-auto-flow:column;
+  grid-auto-columns:150px;
+  gap:10px;
+}
+.carouselScroll::-webkit-scrollbar{ height:8px }
+.carouselScroll::-webkit-scrollbar-thumb{ background:#2a2a35; border-radius:999px }
+.carousel:hover .carouselNav{ opacity:1 }
+.carouselNav{
+  position:absolute; top:50%; transform:translateY(-50%);
+  width:36px; height:36px; border-radius:999px;
+  background:rgba(0,0,0,.6); color:#fff; border:1px solid rgba(255,255,255,.2);
+  display:grid; place-items:center; cursor:pointer; opacity:0; transition:.15s;
+  user-select:none
+}
+.carouselNav.left{ left:4px }
+.carouselNav.right{ right:4px }
+
+.badlink{ color:#fff; text-decoration:underline }
