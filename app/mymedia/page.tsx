@@ -6,11 +6,15 @@ import MediaTile from "../_components/MediaTile";
 
 export default function MyMediaPage() {
   const [favorites, setFavorites] = useState<MediaItem[]>(FavoritesStore.read());
-  useEffect(() => FavoritesStore.subscribe(setFavorites), []);
+  useEffect(() => {
+    const unsubscribe = FavoritesStore.subscribe(setFavorites);
+    return () => { unsubscribe(); };
+  }, []);
   const genres = favorites.flatMap(f => f.genres);
-  const genreCounts = Object.entries(genres.reduce((a:any,g)=>{a[g]=(a[g]||0)+1;return a;}, {})).sort((a,b)=>b[1]-a[1]);
-  const oldest = favorites.reduce((a,f)=> f.year && (!a||f.year<a.year)? f:a, null as MediaItem|null);
-  const newest = favorites.reduce((a,f)=> f.year && (!a||f.year>a.year)? f:a, null as MediaItem|null);
+  const counts = genres.reduce<Record<string, number>>((a, g) => { a[g] = (a[g] || 0) + 1; return a; }, {});
+  const genreCounts: Array<[string, number]> = Object.entries(counts).sort((a, b) => (b[1] as number) - (a[1] as number)) as Array<[string, number]>;
+  const oldest = favorites.reduce<MediaItem | null>((a, f) => (f.year && (!a || (a.year ?? Infinity) > f.year)) ? f : a, null);
+  const newest = favorites.reduce<MediaItem | null>((a, f) => (f.year && (!a || (a.year ?? -Infinity) < f.year)) ? f : a, null);
 
   return (
     <div style={{ padding: 24 }}>
@@ -23,7 +27,7 @@ export default function MyMediaPage() {
         <div><b>Favorites:</b> {favorites.length}</div>
         {oldest ? <div><b>Oldest:</b> {oldest.title} ({oldest.year})</div> : null}
         {newest ? <div><b>Newest:</b> {newest.title} ({newest.year})</div> : null}
-        {genreCounts.slice(0,3).map(([g,c]) => <div key={g}><b>{g}:</b> {c}</div>)}
+  {genreCounts.slice(0,3).map(([g,c]: [string, number]) => <div key={g}><b>{g}:</b> {c}</div>)}
       </div>
     </div>
   );

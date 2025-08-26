@@ -26,7 +26,7 @@ export default function Page() {
       const json = await res.json();
       setPopular(json.byCat || { film: [], game: [], anime: [], tv: [], book: [] });
     })();
-    return () => unsub();
+  return () => { unsub(); };
   }, []);
 
   const runSearch = useMemo(
