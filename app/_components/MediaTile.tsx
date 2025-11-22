@@ -58,9 +58,30 @@ export default function MediaTile({
       
       {/* Hover Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 p-4 flex flex-col justify-end rounded-md">
+        
+        <div className="absolute top-2 right-2 flex flex-col gap-2 z-10">
+          <button 
+            className="w-8 h-8 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white rounded-full flex items-center justify-center transition-colors border border-white/10"
+            onClick={toggleFavorite}
+            title={isFavorite ? "Remove from Favorites" : "Add to Favorites"}
+          >
+            <Heart size={16} className={isFavorite ? "fill-red-500 text-red-500" : "text-white"} />
+          </button>
+          <button 
+            className="w-8 h-8 bg-white text-black rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClick?.();
+            }}
+            title="More Details"
+          >
+            <Plus size={16} strokeWidth={3} />
+          </button>
+        </div>
+
         <div className="translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
           <div className="flex items-end justify-between">
-            <div className="flex-1 pr-4">
+            <div className="flex-1">
               <h4 className="text-white font-bold text-sm leading-tight mb-2 line-clamp-2 drop-shadow-md">{item.title}</h4>
               <div className="flex flex-wrap gap-2 items-center text-[10px] text-gray-200 mb-2">
                 <span className="uppercase tracking-wider border border-gray-400 px-1.5 py-0.5 rounded bg-black/30 backdrop-blur-sm">
@@ -78,26 +99,6 @@ export default function MediaTile({
                   {item.genres.slice(0, 3).join(" • ")}
                 </div>
               )}
-            </div>
-        
-            <div className="flex flex-col gap-2 shrink-0">
-              <button 
-                className="w-8 h-8 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white rounded-full flex items-center justify-center transition-colors border border-white/30"
-                onClick={toggleFavorite}
-                title={isFavorite ? "Remove from Favorites" : "Add to Favorites"}
-              >
-                <Heart size={16} className={isFavorite ? "fill-red-500 text-red-500" : "text-white"} />
-              </button>
-              <button 
-                className="w-8 h-8 bg-white text-black rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onClick?.();
-                }}
-                title="More Details"
-              >
-                <Plus size={16} strokeWidth={3} />
-              </button>
             </div>
           </div>
         </div>
