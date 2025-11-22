@@ -48,7 +48,7 @@ export default function DetailsModal({
 
   return (
   <Dialog open onOpenChange={(isOpen: boolean) => { if (!isOpen) onClose(); }}>
-      <DialogContent className="max-w-[90vw] w-full h-[85vh] p-0 overflow-hidden bg-[#18181b] text-white border-[#27272a] flex flex-col">
+      <DialogContent className="sm:max-w-[90vw] w-full h-[85vh] p-0 overflow-hidden bg-[#18181b] text-white border-[#27272a] flex flex-col">
         <div className="flex-1 overflow-y-auto">
           <div className="relative h-[50vh] w-full shrink-0">
             {(item.backdropUrl || item.imageUrl) && (

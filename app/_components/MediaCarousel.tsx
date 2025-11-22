@@ -33,7 +33,7 @@ export default function MediaCarousel({
       <div ref={scroller} className="overflow-x-auto overflow-y-visible scroll-smooth scrollbar-hide pb-4 -mx-4 px-4 pt-4">
         <div className="flex gap-2 w-max">
           {items.map((it) => (
-            <div key={it.id} className="w-[560px] flex-none">
+            <div key={it.id} className="w-[280px] flex-none">
               <MediaTile 
                 item={it} 
                 onClick={() => onSelect?.(it)}
