@@ -131,10 +131,10 @@ export default function Page() {
                 </div>
               </div>
             ) : (
-              <div className="space-y-12 pb-24">
+              <div className="space-y-6 pb-24">
                 {rails.map((rail) => (
                   <div key={rail.category} className="rail px-8">
-                    <h3 className="text-xl font-bold mb-4 text-gray-100 flex items-center gap-2">
+                    <h3 className="text-xl font-bold mb-2 text-gray-100 flex items-center gap-2">
                       {rail.title}
                       <span className="text-xs font-normal text-gray-500 uppercase tracking-wider border border-gray-700 px-2 py-0.5 rounded-full">
                         {rail.category}

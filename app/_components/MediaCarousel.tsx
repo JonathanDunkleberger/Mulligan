@@ -30,8 +30,8 @@ export default function MediaCarousel({
         <ChevronLeft size={32} />
       </button>
 
-      <div ref={scroller} className="overflow-x-auto overflow-y-visible scroll-smooth scrollbar-hide pb-8 -mx-4 px-4 pt-4">
-        <div className="flex gap-4 w-max">
+      <div ref={scroller} className="overflow-x-auto overflow-y-visible scroll-smooth scrollbar-hide pb-4 -mx-4 px-4 pt-4">
+        <div className="flex gap-2 w-max">
           {items.map((it) => (
             <div key={it.id} className="w-[280px] flex-none">
               <MediaTile 
