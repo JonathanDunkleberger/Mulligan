@@ -99,7 +99,7 @@ export default function Page() {
         <div className="flex flex-col gap-8">
           
           {/* Search & Controls */}
-          <div className="flex gap-4 items-center px-12">
+          <div className="flex gap-4 items-center px-8">
             <Input 
               className="max-w-md bg-black/50 border-gray-700 text-white placeholder:text-gray-400" 
               placeholder="Search titles to add..." 
@@ -122,7 +122,7 @@ export default function Page() {
           {/* Content */}
           <section className="min-h-screen">
             {mode === "search" ? (
-              <div className="px-12">
+              <div className="px-8">
                 <h2 className="text-2xl font-bold mb-6">Results for "{query}"</h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                   {results.map((item) => (
@@ -133,7 +133,7 @@ export default function Page() {
             ) : (
               <div className="space-y-6 pb-24">
                 {rails.map((rail) => (
-                  <div key={rail.category} className="rail px-12">
+                  <div key={rail.category} className="rail px-8">
                     <h3 className="text-xl font-bold mb-2 text-gray-100 flex items-center gap-2">
                       {rail.title}
                       <span className="text-xs font-normal text-gray-500 uppercase tracking-wider border border-gray-700 px-2 py-0.5 rounded-full">

@@ -28,7 +28,7 @@ export default function Header() {
     <>
       <header className="flex items-center justify-between px-8 h-[60px] bg-black/50 backdrop-blur-md border-b border-white/10 sticky top-0 z-50">
         <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2 text-white hover:text-gray-200 transition-colors">
+          <Link href="/" className="flex items-center gap-2 text-purple-500 hover:text-purple-400 transition-colors">
             <CatGirlIcon />
             <span className="text-xl font-black tracking-tight">Feyris</span>
           </Link>

@@ -20,9 +20,6 @@ export default function MediaCarousel({
     el.scrollBy({ left: delta, behavior: "smooth" });
   };
 
-  // Duplicate items to create an "infinite" feel
-  const displayItems = [...items, ...items, ...items, ...items, ...items];
-
   return (
     <div className="group relative">
       <button
@@ -35,8 +32,8 @@ export default function MediaCarousel({
 
       <div ref={scroller} className="overflow-x-auto overflow-y-visible scroll-smooth scrollbar-hide pb-4 -mx-4 px-4 pt-4">
         <div className="flex gap-2 w-max">
-          {displayItems.map((it, idx) => (
-            <div key={`${it.id}-${idx}`} className="w-[280px] flex-none">
+          {items.map((it) => (
+            <div key={it.id} className="w-[280px] flex-none">
               <MediaTile 
                 item={it} 
                 onClick={() => onSelect?.(it)}
