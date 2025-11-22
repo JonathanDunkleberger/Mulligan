@@ -24,7 +24,7 @@ export default function MediaTile({
     };
     checkFav();
     const unsub = FavoritesStore.subscribe(checkFav);
-    return unsub;
+    return () => { unsub(); };
   }, [item.id]);
 
   const toggleFavorite = (e: React.MouseEvent) => {
