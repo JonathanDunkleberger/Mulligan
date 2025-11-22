@@ -26,6 +26,8 @@ export default function Page() {
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
 
   useEffect(() => {
+    // Sync initial state in case of hydration mismatch or delay
+    setFavorites(FavoritesStore.read());
     const unsub = FavoritesStore.subscribe(setFavorites);
     (async () => {
       try {
