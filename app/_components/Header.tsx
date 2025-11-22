@@ -26,7 +26,7 @@ export default function Header() {
               alt="Feyris Logo" 
               width={32} 
               height={32} 
-              className="object-contain"
+              className="object-contain brightness-0 invert"
             />
             <span className="text-xl font-black tracking-tight">Feyris</span>
           </Link>
