@@ -25,7 +25,7 @@ export default function Header() {
       <div className="flex items-center gap-8">
         <Link href="/" className="flex items-center gap-2 text-purple-500 hover:text-purple-400 transition-colors">
           <DiscordIcon />
-          <span className="text-xl font-black tracking-tight">Mulligan</span>
+          <span className="text-xl font-black tracking-tight">Feyris</span>
         </Link>
         
         <nav className="hidden md:flex items-center gap-6">

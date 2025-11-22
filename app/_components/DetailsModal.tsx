@@ -48,73 +48,75 @@ export default function DetailsModal({
 
   return (
   <Dialog open onOpenChange={(isOpen: boolean) => { if (!isOpen) onClose(); }}>
-      <DialogContent className="max-w-4xl p-0 overflow-hidden bg-[#18181b] text-white border-[#27272a]">
-        <div className="relative h-[50vh] w-full">
-          {(item.backdropUrl || item.imageUrl) && (
-            <Image
-              src={item.backdropUrl || item.imageUrl!}
-              alt={item.title}
-              fill
-              className="object-cover opacity-60"
-            />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#18181b] via-[#18181b]/60 to-transparent" />
-          <div className="absolute bottom-0 left-0 p-8 w-full">
-            <motion.h1 
-              className="text-5xl font-extrabold tracking-tight mb-4 text-white drop-shadow-lg"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              {item.title}
-            </motion.h1>
-            <motion.div 
-              className="flex flex-wrap gap-3 items-center"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <Pill>{item.category.toUpperCase()}</Pill>
-              {item.year && <span className="text-gray-300 font-medium">{item.year}</span>}
-              {item.rating != null && <span className="text-green-400 font-bold">{(item.rating * 10).toFixed(0)}% Match</span>}
-              {item.runtime && <span className="text-gray-300">{item.runtime}</span>}
-              {item.status && <span className="text-gray-400 text-sm">({item.status})</span>}
-            </motion.div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 p-8 pt-4">
-          <div className="md:col-span-2 space-y-6">
-            <div className="flex gap-4">
-               <Button size="lg" className="bg-white text-black hover:bg-gray-200 font-bold px-8" onClick={() => FavoritesStore.add(item)}>
-                + My List
-              </Button>
-              {/* Placeholder for "Play" or "Buy" links if we had them */}
-            </div>
-
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Overview</h3>
-              <p className="text-gray-300 leading-relaxed text-lg">
-                {item.summary || "No summary available."}
-              </p>
+      <DialogContent className="max-w-7xl w-full h-[85vh] p-0 overflow-hidden bg-[#18181b] text-white border-[#27272a] flex flex-col">
+        <div className="flex-1 overflow-y-auto">
+          <div className="relative h-[50vh] w-full shrink-0">
+            {(item.backdropUrl || item.imageUrl) && (
+              <Image
+                src={item.backdropUrl || item.imageUrl!}
+                alt={item.title}
+                fill
+                className="object-cover opacity-60"
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#18181b] via-[#18181b]/60 to-transparent" />
+            <div className="absolute bottom-0 left-0 p-8 w-full">
+              <motion.h1 
+                className="text-5xl font-extrabold tracking-tight mb-4 text-white drop-shadow-lg"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                {item.title}
+              </motion.h1>
+              <motion.div 
+                className="flex flex-wrap gap-3 items-center"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <Pill>{item.category.toUpperCase()}</Pill>
+                {item.year && <span className="text-gray-300 font-medium">{item.year}</span>}
+                {item.rating != null && <span className="text-green-400 font-bold">{(item.rating * 10).toFixed(0)}% Match</span>}
+                {item.runtime && <span className="text-gray-300">{item.runtime}</span>}
+                {item.status && <span className="text-gray-400 text-sm">({item.status})</span>}
+              </motion.div>
             </div>
           </div>
 
-          <div className="space-y-6 text-sm text-gray-400">
-            <div>
-              <span className="block text-gray-500 mb-1">Genres</span>
-              <div className="flex flex-wrap gap-2">
-                {item.genres?.map(g => <span key={g} className="text-white hover:underline cursor-pointer">{g}</span>)}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 p-8 pt-4">
+            <div className="md:col-span-2 space-y-6">
+              <div className="flex gap-4">
+                 <Button size="lg" className="bg-white text-black hover:bg-gray-200 font-bold px-8" onClick={() => FavoritesStore.add(item)}>
+                  + My List
+                </Button>
+                {/* Placeholder for "Play" or "Buy" links if we had them */}
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Overview</h3>
+                <p className="text-gray-300 leading-relaxed text-lg">
+                  {item.summary || "No summary available."}
+                </p>
               </div>
             </div>
 
-            {item.creators && item.creators.length > 0 && (
+            <div className="space-y-6 text-sm text-gray-400">
               <div>
-                <span className="block text-gray-500 mb-1">Creatives</span>
+                <span className="block text-gray-500 mb-1">Genres</span>
                 <div className="flex flex-wrap gap-2">
-                  {item.creators.map(c => <span key={c} className="text-white">{c}</span>)}
+                  {item.genres?.map(g => <span key={g} className="text-white hover:underline cursor-pointer">{g}</span>)}
                 </div>
               </div>
-            )}
+
+              {item.creators && item.creators.length > 0 && (
+                <div>
+                  <span className="block text-gray-500 mb-1">Creatives</span>
+                  <div className="flex flex-wrap gap-2">
+                    {item.creators.map(c => <span key={c} className="text-white">{c}</span>)}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </DialogContent>
