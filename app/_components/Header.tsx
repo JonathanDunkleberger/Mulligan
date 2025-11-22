@@ -22,10 +22,10 @@ export default function Header() {
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2 text-purple-500 hover:text-purple-400 transition-colors">
             <Image 
-              src="/Signal to Noise.png" 
+              src="/cat-silhouette-on-transparent-background-free-png.webp" 
               alt="Feyris Logo" 
-              width={32} 
-              height={32} 
+              width={48} 
+              height={48} 
               className="object-contain brightness-0 invert"
             />
             <span className="text-xl font-black tracking-tight">Feyris</span>
