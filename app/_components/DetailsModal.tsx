@@ -10,6 +10,8 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
+import { Play } from "lucide-react";
+
 function Pill({ children }: { children: React.ReactNode }) {
   return (
     <span className="bg-secondary text-secondary-foreground text-xs font-semibold px-3 py-1 rounded-full">
@@ -27,6 +29,7 @@ export default function DetailsModal({
 }) {
   const [item, setItem] = useState<MediaItem>(initialItem);
   const [loading, setLoading] = useState(true);
+  const [playingVideo, setPlayingVideo] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -48,7 +51,7 @@ export default function DetailsModal({
 
   return (
   <Dialog open onOpenChange={(isOpen: boolean) => { if (!isOpen) onClose(); }}>
-      <DialogContent className="sm:max-w-4xl w-full h-[85vh] p-0 overflow-hidden bg-[#18181b] text-white border-[#27272a] flex flex-col">
+      <DialogContent className="sm:max-w-4xl w-full h-[85vh] p-0 overflow-hidden bg-background text-white border-border flex flex-col">
         <div className="flex-1 overflow-y-auto">
           <div className="relative h-[50vh] w-full shrink-0">
             {(item.backdropUrl || item.imageUrl) && (
@@ -59,7 +62,7 @@ export default function DetailsModal({
                 className="object-cover opacity-60"
               />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#18181b] via-[#18181b]/60 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
             <div className="absolute bottom-0 left-0 p-8 w-full">
               <motion.h1 
                 className="text-5xl font-extrabold tracking-tight mb-4 text-white drop-shadow-lg"
@@ -118,6 +121,50 @@ export default function DetailsModal({
               )}
             </div>
           </div>
+
+          {/* Videos Section */}
+          {item.videos && item.videos.length > 0 && (
+            <div className="p-8 pt-0">
+              <h3 className="text-xl font-bold mb-4">Videos</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {item.videos.map((video) => (
+                  <div key={video.id} className="space-y-2">
+                    <div 
+                      className="aspect-video relative rounded-md overflow-hidden bg-black/50 cursor-pointer group border border-white/10 hover:border-white/30 transition-colors"
+                      onClick={() => setPlayingVideo(video.id)}
+                    >
+                      {playingVideo === video.id ? (
+                        <iframe 
+                          src={`https://www.youtube.com/embed/${video.id}?autoplay=1`} 
+                          title={video.title}
+                          className="w-full h-full"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                          allowFullScreen
+                        />
+                      ) : (
+                        <>
+                          <Image 
+                            src={video.thumbnail} 
+                            alt={video.title} 
+                            fill 
+                            className="object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-12 h-12 rounded-full bg-black/60 flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
+                              <Play className="fill-white text-white ml-1" size={20} />
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <p className="text-sm font-medium line-clamp-2 text-gray-300 group-hover:text-white transition-colors">
+                      {video.title}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
