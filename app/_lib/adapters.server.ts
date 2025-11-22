@@ -66,13 +66,25 @@ function mapTmdbListItem(it: any, category: Category): MediaItem {
 export async function tmdbGetDetails(category: "film" | "tv" | "anime", id: string): Promise<MediaItem | null> {
   if (!ENV.TMDB_API_KEY) return null;
   const type = category === "film" ? "movie" : "tv";
-  const res = await tmdbFetch(`/${type}/${id}`, { append_to_response: "credits" });
+  const res = await tmdbFetch(`/${type}/${id}`, { append_to_response: "credits,videos" });
   if (!res) return null;
   
   const item = mapTmdbListItem(res, category);
   // Enrich with details
   item.genres = (res.genres || []).map((g: any) => g.name);
   item.status = res.status;
+  
+  // Map videos (prioritize trailers)
+  if (res.videos?.results) {
+    const vids = res.videos.results.filter((v: any) => v.site === "YouTube");
+    const trailers = vids.filter((v: any) => v.type === "Trailer");
+    const others = vids.filter((v: any) => v.type !== "Trailer");
+    item.videos = [...trailers, ...others].slice(0, 3).map((v: any) => ({
+      id: v.key,
+      title: v.name,
+      thumbnail: `https://i.ytimg.com/vi/${v.key}/hqdefault.jpg`
+    }));
+  }
   
   if (category === "film") {
     item.runtime = res.runtime ? `${res.runtime}m` : undefined;
@@ -172,7 +184,7 @@ export async function igdbSearch(query: string): Promise<MediaItem[]> {
 export async function igdbGetDetails(id: string): Promise<MediaItem | null> {
   if (!ENV.TWITCH_CLIENT_ID || !ENV.TWITCH_CLIENT_SECRET) return null;
   const q = `
-    fields name, first_release_date, cover.image_id, screenshots.image_id, genres.name, summary, rating, involved_companies.company.name, involved_companies.developer;
+    fields name, first_release_date, cover.image_id, screenshots.image_id, genres.name, summary, rating, involved_companies.company.name, involved_companies.developer, videos.video_id, videos.name;
     where id = ${id};
   `;
   const rows = await igdbQuery("games", q);
@@ -192,6 +204,11 @@ export async function igdbGetDetails(id: string): Promise<MediaItem | null> {
     summary: g.summary,
     rating: g.rating ? g.rating / 10 : undefined,
     creators: g.involved_companies?.filter((c: any) => c.developer).map((c: any) => c.company.name),
+    videos: (g.videos || []).slice(0, 3).map((v: any) => ({
+      id: v.video_id,
+      title: v.name || "Gameplay Video",
+      thumbnail: `https://i.ytimg.com/vi/${v.video_id}/hqdefault.jpg`
+    })),
   };
 }
 

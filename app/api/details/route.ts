@@ -30,25 +30,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // Fetch related videos (trailers/reviews)
-  try {
-    const query = `${item.title} ${category === "book" ? "book review" : "trailer"}`;
-    const videoRes = await fetch(`https://inv.tux.pizza/api/v1/search?q=${encodeURIComponent(query)}&type=video&sort=relevance`, {
-      signal: AbortSignal.timeout(3000) // 3s timeout
-    });
-    if (videoRes.ok) {
-      const videos = await videoRes.json();
-      item.videos = videos.slice(0, 3).map((v: any) => ({
-        id: v.videoId,
-        title: v.title,
-        thumbnail: v.videoThumbnails?.[0]?.url || `https://i.ytimg.com/vi/${v.videoId}/hqdefault.jpg`
-      }));
-    }
-  } catch (e) {
-    console.error("Failed to fetch videos", e);
-    item.videos = [];
-  }
-
   return NextResponse.json(item);
 }
 

@@ -4,48 +4,48 @@
 
 @layer base {
   :root {
-    --background: 0 0% 9%;
+    --background: 210 21.4% 5.5%;
     --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
+    --card: 210 21.4% 5.5%;
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
+    --popover: 210 21.4% 5.5%;
     --popover-foreground: 0 0% 98%;
-    --primary: 5 100% 69%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 4 72% 58%;
+    --primary: 165.2 100% 47.1%;
+    --primary-foreground: 210 21.4% 5.5%;
+    --secondary: 174.1 100% 28%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 4 72% 58%;
+    --muted: 210 21.4% 15%;
+    --muted-foreground: 210 10% 65%;
+    --accent: 174.1 100% 28%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 5 100% 69%;
+    --border: 210 21.4% 15%;
+    --input: 210 21.4% 15%;
+    --ring: 165.2 100% 47.1%;
     --radius: 0.5rem;
   }
  
   .dark {
-    --background: 0 0% 9%;
+    --background: 210 21.4% 5.5%;
     --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
+    --card: 210 21.4% 5.5%;
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
+    --popover: 210 21.4% 5.5%;
     --popover-foreground: 0 0% 98%;
-    --primary: 5 100% 69%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 4 72% 58%;
+    --primary: 165.2 100% 47.1%;
+    --primary-foreground: 210 21.4% 5.5%;
+    --secondary: 174.1 100% 28%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 4 72% 58%;
+    --muted: 210 21.4% 15%;
+    --muted-foreground: 210 10% 65%;
+    --accent: 174.1 100% 28%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 5 100% 69%;
+    --border: 210 21.4% 15%;
+    --input: 210 21.4% 15%;
+    --ring: 165.2 100% 47.1%;
   }
 }
 
@@ -81,7 +81,7 @@
   height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: #181818; 
+  background: #0B0E11; 
 }
 ::-webkit-scrollbar-thumb {
   background: #3f3f46; 
