@@ -20,7 +20,7 @@ export default function Header() {
     <>
       <header className="flex items-center justify-between px-8 h-[60px] bg-black/50 backdrop-blur-md border-b border-white/10 sticky top-0 z-50">
         <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2 text-purple-500 hover:text-purple-400 transition-colors">
+          <Link href="/" className="flex items-center gap-2 text-[#FFBF00] hover:text-[#FFD700] transition-colors">
             <Image 
               src="/cat-silhouette-on-transparent-background-free-png.webp" 
               alt="Feyris Logo" 
@@ -47,7 +47,7 @@ export default function Header() {
             Join Discord
           </a>
           <button 
-            className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-xs hover:bg-purple-500 transition-colors"
+            className="w-8 h-8 rounded-full bg-[#FFBF00] flex items-center justify-center text-black font-bold text-xs hover:bg-[#FFD700] transition-colors"
             onClick={() => setShowProfile(true)}
           >
             JD
