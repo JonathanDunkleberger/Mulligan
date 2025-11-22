@@ -3,8 +3,15 @@
 import { useRef } from "react";
 import type { MediaItem } from "../_lib/schema";
 import MediaTile from "./MediaTile";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
-export default function MediaCarousel({ items }: { items: MediaItem[] }) {
+export default function MediaCarousel({ 
+  items,
+  onSelect
+}: { 
+  items: MediaItem[];
+  onSelect?: (item: MediaItem) => void;
+}) {
   const scroller = useRef<HTMLDivElement>(null);
 
   const scrollBy = (delta: number) => {
@@ -14,30 +21,36 @@ export default function MediaCarousel({ items }: { items: MediaItem[] }) {
   };
 
   return (
-    <div className="carousel">
+    <div className="group relative">
       <button
-        className="carouselNav left"
+        className="absolute left-0 top-0 bottom-0 z-20 w-12 bg-black/50 hover:bg-black/70 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
         aria-label="Scroll left"
         onClick={() => scrollBy(-1000)}
       >
-        ‹
+        <ChevronLeft size={32} />
       </button>
 
-      <div ref={scroller} className="carouselScroll">
-        <div className="carouselInner">
+      <div ref={scroller} className="overflow-x-auto overflow-y-hidden scroll-smooth scrollbar-hide pb-4 -mx-4 px-4">
+        <div className="flex gap-4 w-max">
           {items.map((it) => (
-            <MediaTile key={it.id} item={it} />
+            <div key={it.id} className="w-[160px] flex-none">
+              <MediaTile 
+                item={it} 
+                onClick={() => onSelect?.(it)}
+              />
+            </div>
           ))}
         </div>
       </div>
 
       <button
-        className="carouselNav right"
+        className="absolute right-0 top-0 bottom-0 z-20 w-12 bg-black/50 hover:bg-black/70 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
         aria-label="Scroll right"
         onClick={() => scrollBy(1000)}
       >
-        ›
+        <ChevronRight size={32} />
       </button>
     </div>
   );
 }
+

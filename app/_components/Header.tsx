@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 function DiscordIcon() {
   return (
@@ -11,22 +13,42 @@ function DiscordIcon() {
 }
 
 export default function Header() {
+  const pathname = usePathname();
+  
+  const navLinkClass = (path: string) => cn(
+    "text-sm font-medium transition-colors hover:text-white",
+    pathname === path ? "text-white" : "text-gray-400"
+  );
+
   return (
-    <>
-      <div className="logo">
-        <a href={process.env.NEXT_PUBLIC_DISCORD_INVITE_URL || "#"} target="_blank" rel="noreferrer" title="Join Discord" className="badlink">
+    <header className="flex items-center justify-between px-8 h-[60px] bg-black/50 backdrop-blur-md border-b border-white/10 sticky top-0 z-50">
+      <div className="flex items-center gap-8">
+        <Link href="/" className="flex items-center gap-2 text-purple-500 hover:text-purple-400 transition-colors">
           <DiscordIcon />
+          <span className="text-xl font-black tracking-tight">Mulligan</span>
+        </Link>
+        
+        <nav className="hidden md:flex items-center gap-6">
+          <Link href="/" className={navLinkClass("/")}>Home</Link>
+          <Link href="/browse" className={navLinkClass("/browse")}>Browse</Link>
+          <Link href="/mymedia" className={navLinkClass("/mymedia")}>My Media</Link>
+        </nav>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <a 
+          href={process.env.NEXT_PUBLIC_DISCORD_INVITE_URL || "#"} 
+          target="_blank" 
+          rel="noreferrer" 
+          className="text-xs font-medium text-gray-400 hover:text-white transition-colors"
+        >
+          Join Discord
         </a>
-        <span className="word">Mulligan</span>
+        <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-xs">
+          JD
+        </div>
       </div>
-      <nav className="nav">
-        <Link href="/" className="btn">Home</Link>
-        <Link href="/browse" className="btn">Browse</Link>
-        <Link href="/mymedia" className="btn">My Media</Link>
-      </nav>
-      <div>
-        <Link href="#" className="btn">Profile</Link>
-      </div>
-    </>
+    </header>
   );
 }
+

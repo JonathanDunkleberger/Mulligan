@@ -26,8 +26,34 @@ function mapTmdbListItem(it: any, category: Category): MediaItem {
     title,
     year: date ? Number(String(date).slice(0, 4)) : undefined,
     imageUrl: it.poster_path ? `https://image.tmdb.org/t/p/w500${it.poster_path}` : undefined,
-    genres: (it.genre_ids || []).map((g: any) => String(g))
+    backdropUrl: it.backdrop_path ? `https://image.tmdb.org/t/p/original${it.backdrop_path}` : undefined,
+    genres: (it.genre_ids || []).map((g: any) => String(g)),
+    summary: it.overview,
+    rating: it.vote_average,
   };
+}
+
+export async function tmdbGetDetails(category: "film" | "tv" | "anime", id: string): Promise<MediaItem | null> {
+  if (!ENV.TMDB_API_KEY) return null;
+  const type = category === "film" ? "movie" : "tv";
+  const res = await tmdbFetch(`/${type}/${id}`, { append_to_response: "credits" });
+  if (!res) return null;
+  
+  const item = mapTmdbListItem(res, category);
+  // Enrich with details
+  item.genres = (res.genres || []).map((g: any) => g.name);
+  item.status = res.status;
+  
+  if (category === "film") {
+    item.runtime = res.runtime ? `${res.runtime}m` : undefined;
+    const director = res.credits?.crew?.find((c: any) => c.job === "Director")?.name;
+    if (director) item.creators = [director];
+  } else {
+    item.runtime = res.number_of_episodes ? `${res.number_of_episodes} eps` : undefined;
+    const creator = res.created_by?.map((c: any) => c.name);
+    if (creator?.length) item.creators = creator;
+  }
+  return item;
 }
 
 export async function tmdbSearchAll(query: string): Promise<MediaItem[]> {
@@ -91,7 +117,7 @@ async function igdbQuery(endpoint: string, body: string) {
 export async function igdbSearch(query: string): Promise<MediaItem[]> {
   if (!ENV.TWITCH_CLIENT_ID || !ENV.TWITCH_CLIENT_SECRET) return [];
   const q = `
-    fields id, name, first_release_date, cover.image_id, genres.name;
+    fields id, name, first_release_date, cover.image_id, genres.name, summary, rating, involved_companies.company.name, involved_companies.developer, screenshots.image_id;
     search "${query.replace(/"/g, '\\"')}";
     where version_parent = null;
     limit 25;
@@ -105,12 +131,43 @@ export async function igdbSearch(query: string): Promise<MediaItem[]> {
     title: g.name,
     year: g.first_release_date ? new Date(g.first_release_date * 1000).getUTCFullYear() : undefined,
     imageUrl: g.cover?.image_id ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${g.cover.image_id}.jpg` : undefined,
-    genres: (g.genres || []).map((x: any) => x.name)
+    backdropUrl: g.screenshots?.[0]?.image_id ? `https://images.igdb.com/igdb/image/upload/t_screenshot_big/${g.screenshots[0].image_id}.jpg` : undefined,
+    genres: (g.genres || []).map((x: any) => x.name),
+    summary: g.summary,
+    rating: g.rating ? g.rating / 10 : undefined, // Scale to 0-10
+    creators: g.involved_companies?.filter((c: any) => c.developer).map((c: any) => c.company.name),
   }));
 }
+
+export async function igdbGetDetails(id: string): Promise<MediaItem | null> {
+  if (!ENV.TWITCH_CLIENT_ID || !ENV.TWITCH_CLIENT_SECRET) return null;
+  const q = `
+    fields name, first_release_date, cover.image_id, screenshots.image_id, genres.name, summary, rating, involved_companies.company.name, involved_companies.developer;
+    where id = ${id};
+  `;
+  const rows = await igdbQuery("games", q);
+  if (!rows || !rows.length) return null;
+  const g = rows[0];
+  
+  return {
+    id: `igdb:game:${g.id}`,
+    source: "igdb",
+    sourceId: String(g.id),
+    category: "game",
+    title: g.name,
+    year: g.first_release_date ? new Date(g.first_release_date * 1000).getUTCFullYear() : undefined,
+    imageUrl: g.cover?.image_id ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${g.cover.image_id}.jpg` : undefined,
+    backdropUrl: g.screenshots?.[0]?.image_id ? `https://images.igdb.com/igdb/image/upload/t_screenshot_big/${g.screenshots[0].image_id}.jpg` : undefined,
+    genres: (g.genres || []).map((x: any) => x.name),
+    summary: g.summary,
+    rating: g.rating ? g.rating / 10 : undefined,
+    creators: g.involved_companies?.filter((c: any) => c.developer).map((c: any) => c.company.name),
+  };
+}
+
 export async function igdbPopular(): Promise<MediaItem[]> {
   const q = `
-    fields id, name, first_release_date, cover.image_id, genres.name, rating_count;
+    fields id, name, first_release_date, cover.image_id, genres.name, rating_count, summary, rating, involved_companies.company.name, involved_companies.developer, screenshots.image_id;
     where rating_count != null & rating_count > 100;
     sort rating_count desc;
     limit 40;
@@ -124,9 +181,14 @@ export async function igdbPopular(): Promise<MediaItem[]> {
     title: g.name,
     year: g.first_release_date ? new Date(g.first_release_date * 1000).getUTCFullYear() : undefined,
     imageUrl: g.cover?.image_id ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${g.cover.image_id}.jpg` : undefined,
-    genres: (g.genres || []).map((x: any) => x.name)
+    backdropUrl: g.screenshots?.[0]?.image_id ? `https://images.igdb.com/igdb/image/upload/t_screenshot_big/${g.screenshots[0].image_id}.jpg` : undefined,
+    genres: (g.genres || []).map((x: any) => x.name),
+    summary: g.summary,
+    rating: g.rating ? g.rating / 10 : undefined,
+    creators: g.involved_companies?.filter((c: any) => c.developer).map((c: any) => c.company.name),
   })).slice(0, 20);
 }
+
 
 /* -------------------- Google Books -------------------- */
 
@@ -157,7 +219,9 @@ export async function gbooksSearch(query: string): Promise<MediaItem[]> {
       title: info.title || "Untitled",
       year,
       imageUrl: thumb,
-      genres: info.categories || []
+      genres: info.categories || [],
+      summary: info.description,
+      creators: info.authors,
     } as MediaItem;
   });
 }
@@ -184,7 +248,35 @@ export async function gbooksPopular(): Promise<MediaItem[]> {
       title: info.title || "Untitled",
       year,
       imageUrl: thumb,
-      genres: info.categories || []
+      genres: info.categories || [],
+      summary: info.description,
+      creators: info.authors,
     } as MediaItem;
   }).slice(0, 20);
+}
+
+export async function gbooksGetDetails(id: string): Promise<MediaItem | null> {
+  if (!ENV.GOOGLE_BOOKS_API_KEY) return null;
+  const url = new URL(`https://www.googleapis.com/books/v1/volumes/${id}`);
+  url.searchParams.set("key", ENV.GOOGLE_BOOKS_API_KEY);
+  const res = await fetch(url, { cache: "force-cache" });
+  if (!res.ok) return null;
+  const b = await res.json();
+  const info = b.volumeInfo || {};
+  const thumb = normalizeGBooksThumb(info.imageLinks?.thumbnail || info.imageLinks?.smallThumbnail || info.imageLinks?.large);
+  
+  return {
+    id: `gbooks:book:${b.id}`,
+    source: "gbooks",
+    sourceId: b.id,
+    category: "book",
+    title: info.title || "Untitled",
+    year: info.publishedDate ? Number(String(info.publishedDate).slice(0, 4)) : undefined,
+    imageUrl: thumb,
+    genres: info.categories || [],
+    summary: info.description?.replace(/<[^>]*>/g, ""), // Strip HTML
+    rating: info.averageRating ? info.averageRating * 2 : undefined,
+    creators: info.authors,
+    runtime: info.pageCount ? `${info.pageCount} p` : undefined,
+  };
 }

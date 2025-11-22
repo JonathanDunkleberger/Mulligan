@@ -8,5 +8,12 @@ export type MediaItem = {
   title: string;
   year?: number;
   imageUrl?: string;
+  backdropUrl?: string;
   genres: string[];
+  summary?: string;
+  rating?: number;
+  creators?: string[]; // Director, Developer, Author
+  runtime?: string;    // "120m", "300p", "24 eps"
+  status?: string;     // "Ended", "Ongoing"
 };
+
