@@ -7,7 +7,10 @@ import {
   gbooksGetSimilar,
   tmdbDiscover,
   igdbDiscover,
-  gbooksDiscover
+  gbooksDiscover,
+  tmdbSearch,
+  igdbSearch,
+  gbooksSearch
 } from "../../_lib/adapters.server";
 import OpenAI from "openai";
 
@@ -100,10 +103,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ film: [], tv: [], anime: [], game: [], book: [] });
     }
 
-    // 2. Calculate Mean Vector (The "Vibe")
-    const meanVector = calculateMeanVector(embeddings);
+    // 2. Group favorites by category for LLM analysis
+    const favsByCategory: Record<Category, any[]> = { film: [], tv: [], anime: [], game: [], book: [] };
+    favorites.forEach((f: any) => {
+      const item = Array.isArray(f.media_items) ? f.media_items[0] : f.media_items;
+      if (item && item.type) {
+        favsByCategory[item.type as Category]?.push(item);
+      }
+    });
 
-    // 3. Query for nearest neighbors in each category
+    // 3. Generate Recommendations via LLM + External Search
     const categories: Category[] = ["film", "tv", "anime", "game", "book"];
     const results: Record<Category, MediaItem[]> = { film: [], tv: [], anime: [], game: [], book: [] };
 
@@ -114,112 +123,99 @@ export async function POST(req: NextRequest) {
       if (item?.id) favoritedIds.add(item.id);
     });
 
-    // Helper: Calculate cosine similarity (dot product for normalized vectors)
-    const cosineSim = (a: number[], b: number[]) => {
-      return a.reduce((sum, val, i) => sum + val * b[i], 0);
-    };
-
     await Promise.all(categories.map(async (cat) => {
-      // A. Vector Search (Primary - Internal DB)
-      const { data: recs, error: rpcError } = await supabase.rpc("match_media_items", {
-        query_embedding: meanVector,
-        match_threshold: 0.3, 
-        match_count: 24,
-        filter_category: cat
-      });
+      const catFavs = favsByCategory[cat];
+      
+      // If no favorites in this category, return empty (or handle cold start elsewhere)
+      if (!catFavs || catFavs.length === 0) return;
 
-      if (rpcError) {
-        console.error(`RPC Error for ${cat}:`, rpcError);
-      } else if (recs) {
-        results[cat] = recs
-          .filter((r: any) => !favoritedIds.has(r.id))
-          .map((r: any) => r.metadata as MediaItem);
+      // A. LLM Analysis: Get "Seed" titles and "Discovery" params
+      const favTitles = catFavs.map(f => f.title).slice(0, 20).join(", ");
+      
+      const prompt = `
+        You are an expert recommendation engine for ${cat}.
+        The user loves these titles: ${favTitles}.
+        
+        Task:
+        1. Identify 3 specific "Hidden Gem" titles that perfectly match the user's taste but are NOT in the list. Avoid extremely popular trending items unless they are a perfect match.
+        2. Identify 2 specific sub-genres or themes (e.g. "Cyberpunk", "Space Opera", "Cozy Mystery") that the user seems to like.
+        
+        Return ONLY a JSON object with this structure:
+        {
+          "seeds": ["Title 1", "Title 2", "Title 3"],
+          "genres": ["Genre 1", "Genre 2"]
+        }
+      `;
+
+      let seeds: string[] = [];
+      let genres: string[] = [];
+
+      try {
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4o", // Use smart model for reasoning
+          messages: [{ role: "system", content: "You are a helpful assistant that outputs JSON." }, { role: "user", content: prompt }],
+          response_format: { type: "json_object" }
+        });
+        const content = JSON.parse(completion.choices[0].message.content || "{}");
+        seeds = content.seeds || [];
+        genres = content.genres || [];
+      } catch (err) {
+        console.error(`LLM Error for ${cat}:`, err);
+        // Fallback: Pick random favorites as seeds
+        seeds = catFavs.sort(() => 0.5 - Math.random()).slice(0, 3).map(f => f.title);
       }
 
-      // B. External Backfill (Secondary - External APIs)
-      // If we don't have enough vector matches, use "Smart Discovery"
-      if (results[cat].length < 24) {
-        const catFavorites = favorites
-          .map((f: any) => Array.isArray(f.media_items) ? f.media_items[0] : f.media_items)
-          .filter((item: any) => item && item.type === cat);
+      // B. Execution: Search and Expand
+      const promises: Promise<MediaItem[]>[] = [];
 
-        if (catFavorites.length > 0) {
-           // Strategy 1: Centroids (The "Core" Taste)
-           // Find the 3 favorites closest to the mean vector
-           const sortedByDistance = catFavorites
-             .filter((item: any) => item.embedding)
-             .sort((a: any, b: any) => {
-               const simA = cosineSim(meanVector, a.embedding);
-               const simB = cosineSim(meanVector, b.embedding);
-               return simB - simA; // Descending similarity
-             });
-           
-           const seeds = sortedByDistance.slice(0, 3);
-           // If no embeddings on favorites yet, fallback to random
-           if (seeds.length === 0) seeds.push(...catFavorites.sort(() => 0.5 - Math.random()).slice(0, 3));
+      // 1. Search for specific "Seed" titles and get their recommendations
+      for (const seedTitle of seeds) {
+        promises.push((async () => {
+          try {
+            let searchResults: MediaItem[] = [];
+            if (cat === 'game') searchResults = await igdbSearch(seedTitle);
+            else if (cat === 'book') searchResults = await gbooksSearch(seedTitle);
+            else searchResults = await tmdbSearch(seedTitle, cat);
 
-           // Strategy 2: Genre Discovery (The "Vibe" Expansion)
-           // Extract top genres from all favorites in this category
-           const genreCounts: Record<string, number> = {};
-           catFavorites.forEach((item: any) => {
-             const genres = item.metadata?.genres || [];
-             genres.forEach((g: string) => {
-               genreCounts[g] = (genreCounts[g] || 0) + 1;
-             });
-           });
-           const topGenres = Object.entries(genreCounts)
-             .sort(([,a], [,b]) => b - a)
-             .slice(0, 2)
-             .map(([g]) => g);
+            // Find best match
+            const bestMatch = searchResults[0]; // Top result is usually best
+            if (!bestMatch) return [];
 
-           // Execute External Queries
-           const externalPromises: Promise<MediaItem[]>[] = [];
+            // Get recommendations based on this seed
+            if (cat === 'game') return await igdbGetSimilar(bestMatch.id);
+            if (cat === 'book') return await gbooksGetSimilar(bestMatch.id);
+            return await tmdbGetRecommendations(bestMatch.id, cat);
+          } catch (e) {
+            return [];
+          }
+        })());
+      }
 
-           // 1. Get Similar to Centroids
-           for (const seed of seeds) {
-              if (cat === 'film' || cat === 'tv' || cat === 'anime') {
-                 externalPromises.push(tmdbGetRecommendations(seed.id, cat));
-              } else if (cat === 'game') {
-                 externalPromises.push(igdbGetSimilar(seed.id));
-              } else if (cat === 'book') {
-                 externalPromises.push(gbooksGetSimilar(seed.id));
-              }
-           }
+      // 2. Run "Discovery" query based on LLM genres
+      if (genres.length > 0) {
+        promises.push((async () => {
+          try {
+             if (cat === 'game') return await igdbDiscover(genres);
+             if (cat === 'book') return await gbooksDiscover(genres);
+             return await tmdbDiscover(cat, genres);
+          } catch (e) { return []; }
+        })());
+      }
 
-           // 2. Get Discovery by Genre (if supported)
-           if (topGenres.length > 0) {
-             if (cat === 'film' || cat === 'tv' || cat === 'anime') {
-               externalPromises.push(tmdbDiscover(cat, topGenres));
-             } else if (cat === 'game') {
-               externalPromises.push(igdbDiscover(topGenres));
-             } else if (cat === 'book') {
-               externalPromises.push(gbooksDiscover(topGenres));
-             }
-           }
+      const allResults = await Promise.all(promises);
+      const candidates = allResults.flat();
 
-           const externalResults = await Promise.all(externalPromises);
-           
-           // Flatten and Deduplicate
-           const candidates = externalResults.flat();
-           
-           // Shuffle candidates to mix "Similar To" and "Discovery" results
-           // Fisher-Yates shuffle
-           for (let i = candidates.length - 1; i > 0; i--) {
-             const j = Math.floor(Math.random() * (i + 1));
-             [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
-           }
+      // C. Filter and Fill
+      for (const item of candidates) {
+        if (results[cat].length >= 24) break;
+        
+        // Strict ID check
+        if (favoritedIds.has(item.id)) continue;
+        
+        // Deduplicate within results
+        if (results[cat].some(r => r.id === item.id)) continue;
 
-           for (const sim of candidates) {
-              if (results[cat].length >= 24) break;
-              
-              const isFav = favoritedIds.has(sim.id);
-              const isInResults = results[cat].some(r => r.id === sim.id);
-              
-              if (!isFav && !isInResults) {
-                 results[cat].push(sim);
-              }
-           }
-        }
+        results[cat].push(item);
       }
     }));
 

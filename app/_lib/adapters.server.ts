@@ -98,6 +98,24 @@ export async function tmdbGetDetails(category: "film" | "tv" | "anime", id: stri
   return item;
 }
 
+export async function tmdbSearch(query: string, category: "film" | "tv" | "anime"): Promise<MediaItem[]> {
+  if (!ENV.TMDB_API_KEY) return [];
+  const type = category === "film" ? "movie" : "tv";
+  
+  const res = await tmdbFetch(`/search/${type}`, { query, include_adult: "false", page: "1" });
+  if (!res || !res.results) return [];
+
+  const items: MediaItem[] = [];
+  for (const r of res.results) {
+    if (category === "anime") {
+       const isAnime = (r.origin_country || []).includes("JP") || (r.genre_ids || []).includes(16);
+       if (!isAnime) continue;
+    }
+    items.push(mapTmdbListItem(r, category));
+  }
+  return items;
+}
+
 export async function tmdbSearchAll(query: string): Promise<MediaItem[]> {
   if (!ENV.TMDB_API_KEY) return [];
   const [movies, tv] = await Promise.all([
