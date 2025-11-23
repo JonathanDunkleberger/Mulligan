@@ -58,9 +58,9 @@ export default function DetailsModal({
         <DialogTitle className="sr-only">{item.title}</DialogTitle>
         <div className="flex-1 overflow-y-auto">
           <div className="relative h-[50vh] w-full shrink-0">
-            {(item.backdropUrl || item.imageUrl) && (
+            {(item.imageUrl || item.backdropUrl) && (
               <Image
-                src={item.backdropUrl || item.imageUrl!}
+                src={item.imageUrl || item.backdropUrl!}
                 alt={item.title}
                 fill
                 className="object-cover opacity-60"
