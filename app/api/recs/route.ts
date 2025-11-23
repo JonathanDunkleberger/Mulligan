@@ -61,7 +61,10 @@ export async function POST(req: NextRequest) {
       const itemsToHeal = favorites.slice(0, 3); // Heal top 3 to get started
       
       for (const f of itemsToHeal) {
-        const item = f.media_items;
+        const itemData = f.media_items;
+        // Supabase might return an array for the relation
+        const item = Array.isArray(itemData) ? itemData[0] : itemData;
+
         if (!item) continue;
         
         try {
@@ -79,7 +82,7 @@ export async function POST(req: NextRequest) {
             
           embeddings.push(vec);
         } catch (err) {
-          console.error("Failed to heal item:", item.title, err);
+          console.error("Failed to heal item:", item?.title, err);
         }
       }
     }
