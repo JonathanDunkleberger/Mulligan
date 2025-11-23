@@ -6,7 +6,7 @@ import { MediaItem } from "../_lib/schema";
 import { FavoritesStore } from "../_state/favorites";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
@@ -52,6 +52,7 @@ export default function DetailsModal({
   return (
   <Dialog open onOpenChange={(isOpen: boolean) => { if (!isOpen) onClose(); }}>
       <DialogContent className="sm:max-w-4xl w-full h-[85vh] p-0 overflow-hidden bg-background text-white border-border flex flex-col">
+        <DialogTitle className="sr-only">{item.title}</DialogTitle>
         <div className="flex-1 overflow-y-auto">
           <div className="relative h-[50vh] w-full shrink-0">
             {(item.backdropUrl || item.imageUrl) && (

@@ -65,13 +65,14 @@ export default function Page() {
               }
             }
 
-            // Parse source and sourceId from the ID (e.g. "tmdb-12345")
-            const [sourcePrefix, ...rest] = item.id.split('-');
-            const sourceId = rest.join('-');
-            const source = sourcePrefix === 'gbooks' ? 'gbooks' : sourcePrefix === 'igdb' ? 'igdb' : 'tmdb';
+            // Use source and sourceId directly from API
+            const source = item.source;
+            const sourceId = item.sourceId;
+            // Create a unique ID for the frontend to prevent collisions
+            const uniqueId = `${source}-${sourceId}`;
 
             return {
-              id: item.id,
+              id: uniqueId,
               title: item.title,
               category: cat,
               imageUrl: item.imageUrl || "https://placehold.co/400x600?text=" + encodeURIComponent(item.title),
@@ -164,12 +165,12 @@ export default function Page() {
           
           // Map the normalized API results to MediaItem
           const mappedResults: MediaItem[] = (json || []).map((item: any) => ({
-            id: item.id,
+            id: `${item.source}-${item.sourceId}`, // Unique ID
             title: item.title,
             category: item.type === 'movie' ? 'film' : item.type, // Map 'movie' -> 'film'
             imageUrl: item.imageUrl,
             description: item.description,
-            source: "supa", // Or keep original source if needed, but 'supa' works for now
+            source: item.source,
             sourceId: item.sourceId,
             year: item.releaseYear ? parseInt(item.releaseYear) : undefined,
             genres: [], // Search API might not return genres yet

@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     item = await tmdbGetDetails(category as "film"|"tv"|"anime", sourceId);
   } else if (source === "igdb") {
     item = await igdbGetDetails(sourceId);
-  } else if (source === "gbooks") {
+  } else if (source === "gbooks" || source === "google_books") {
     item = await gbooksGetDetails(sourceId);
   }
 

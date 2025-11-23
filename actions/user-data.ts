@@ -37,7 +37,7 @@ export async function getUserFavoriteIds(): Promise<string[]> {
     // Reconstruct the ID used in the frontend (e.g. tmdb-123)
     let prefix = "tmdb";
     if (item.type === "game") prefix = "igdb";
-    if (item.type === "book") prefix = "gbooks";
+    if (item.type === "book") prefix = "google_books";
     
     return `${prefix}-${sourceId}`;
   }).filter((id): id is string => id !== null);
