@@ -132,20 +132,13 @@ export async function POST(req: NextRequest) {
       if (!catFavs || catFavs.length === 0) return;
 
       // A. LLM Analysis: Get "Seed" titles and "Discovery" params
-      // Smart Sampling: Prioritize recent favorites (current mood) + random historical ones (breadth)
-      let selectedFavs = catFavs;
-      if (catFavs.length > 20) {
-        const recent = catFavs.slice(0, 10);
-        const older = catFavs.slice(10);
-        const randomOlder = older.sort(() => 0.5 - Math.random()).slice(0, 10);
-        selectedFavs = [...recent, ...randomOlder];
-      }
-      
+      // Use entire history (up to 500 items) to ensure comprehensive understanding of user taste.
+      const selectedFavs = catFavs.slice(0, 500);
       const favTitles = selectedFavs.map(f => f.title).join(", ");
       
       const prompt = `
         You are an expert recommendation engine for ${cat}.
-        The user has liked these titles (most recent first): ${favTitles}.
+        The user has liked these titles (entire history): ${favTitles}.
         
         Task:
         1. Identify 4 specific titles that perfectly match the user's taste but are NOT in the list.
