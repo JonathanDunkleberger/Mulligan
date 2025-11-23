@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import type { MediaItem } from "../_lib/schema";
-import { FavoritesStore } from "../_state/favorites";
 import { Heart, Plus } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { saveAndFavoriteItem } from "@/actions/save-and-favorite";
 
 export default function MediaTile({
   item,
@@ -16,23 +16,38 @@ export default function MediaTile({
   showAddHint?: boolean;
 }) {
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    const checkFav = () => {
-      const favs = FavoritesStore.read();
-      setIsFavorite(favs.some(f => f.id === item.id));
-    };
-    checkFav();
-    const unsub = FavoritesStore.subscribe(checkFav);
-    return () => { unsub(); };
-  }, [item.id]);
-
-  const toggleFavorite = (e: React.MouseEvent) => {
+  const toggleFavorite = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isFavorite) {
-      FavoritesStore.remove(item.id);
-    } else {
-      FavoritesStore.add(item);
+    if (isLoading) return;
+    
+    setIsLoading(true);
+    try {
+      // Map MediaItem to the format expected by saveAndFavoriteItem
+      const mediaData = {
+        id: item.id,
+        title: item.title,
+        type: (item.category === 'film' ? 'movie' : item.category) as 'movie' | 'tv' | 'book' | 'game',
+        description: item.summary || "",
+        imageUrl: item.imageUrl || "",
+        releaseYear: item.year?.toString() || "",
+        sourceId: item.sourceId
+      };
+
+      // Hardcoded user ID for now
+      const userId = "user_123";
+      
+      const result = await saveAndFavoriteItem(mediaData, userId);
+      
+      if (result.success) {
+        setIsFavorite(true);
+        // You could add a toast here
+      }
+    } catch (error) {
+      console.error("Failed to favorite:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -61,9 +76,10 @@ export default function MediaTile({
         
         <div className="absolute top-2 right-2 flex flex-col gap-2 z-10">
           <button 
-            className="w-8 h-8 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white rounded-full flex items-center justify-center transition-colors border border-white/10"
+            className={`w-8 h-8 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white rounded-full flex items-center justify-center transition-colors border border-white/10 ${isLoading ? 'opacity-50 cursor-wait' : ''}`}
             onClick={toggleFavorite}
-            title={isFavorite ? "Remove from Favorites" : "Add to Favorites"}
+            disabled={isLoading}
+            title={isFavorite ? "Saved" : "Add to Favorites"}
           >
             <Heart size={16} className={isFavorite ? "fill-red-500 text-red-500" : "text-white"} />
           </button>

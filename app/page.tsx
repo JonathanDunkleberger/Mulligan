@@ -15,6 +15,8 @@ import { Input } from "@/components/ui/input";
 type Mode = "browse" | "search" | "recommend";
 const ORDER: Category[] = ["film", "tv", "anime", "game", "book"];
 
+import { getCategoryRecommendations } from "@/actions/get-recommendations";
+
 export default function Page() {
   const [mode, setMode] = useState<Mode>("browse");
   const [query, setQuery] = useState("");
@@ -26,25 +28,55 @@ export default function Page() {
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
 
   useEffect(() => {
-    // Sync initial state in case of hydration mismatch or delay
+    // Sync initial state
     setFavorites(FavoritesStore.read());
     const unsub = FavoritesStore.subscribe(setFavorites);
-    (async () => {
+
+    async function loadDeepCuts() {
       try {
-        const res = await fetch("/api/popular", { cache: "no-store" });
-        const json = await res.json();
-        const pop = json.byCat || { film: [], game: [], anime: [], tv: [], book: [] };
-        setPopular(pop);
+        // A. Call the new Engine (Supabase)
+        // Hardcode a generic user ID or use the real one if you have Auth set up
+        const userId = "user_123"; 
         
-        // Pick a random hero item from films or tv
-        const candidates = [...(pop.film || []), ...(pop.tv || [])];
-        if (candidates.length > 0) {
-          setHeroItem(candidates[Math.floor(Math.random() * candidates.length)]);
+        // Fetch for all categories to populate the rails
+        const categories: Category[] = ["film", "tv", "anime", "game", "book"];
+        const newPopular: Record<Category, MediaItem[]> = { film: [], game: [], anime: [], tv: [], book: [] };
+
+        await Promise.all(categories.map(async (cat) => {
+          // Map 'film' to 'movie' for the DB query if needed, but the action takes 'type'
+          // The DB enum has 'movie', schema has 'film'.
+          const dbType = cat === "film" ? "movie" : cat;
+          const data = await getCategoryRecommendations(userId, dbType);
+
+          // B. THE ADAPTER (Make it fit your UI)
+          newPopular[cat] = data.map((item: any) => ({
+            id: item.id,
+            title: item.title,
+            category: cat, 
+            // Use placeholder if no image
+            imageUrl: item.metadata?.cover_url || item.metadata?.imageUrl || "https://placehold.co/400x600?text=" + encodeURIComponent(item.title),
+            description: item.description,
+            source: "supa",
+            sourceId: item.id,
+            year: item.metadata?.year,
+            genres: item.metadata?.genres || [],
+          } as MediaItem));
+        }));
+
+        setPopular(newPopular);
+        
+        // Pick a random hero item
+        const allItems = Object.values(newPopular).flat();
+        if (allItems.length > 0) {
+          setHeroItem(allItems[Math.floor(Math.random() * allItems.length)]);
         }
-      } catch (e) {
-        console.error("Failed to fetch popular", e);
+
+      } catch (error) {
+        console.error("Failed to load deep cuts:", error);
       }
-    })();
+    }
+
+    loadDeepCuts();
     return () => { unsub(); };
   }, []);
 
@@ -52,10 +84,29 @@ export default function Page() {
     () =>
       debounce(async (q: string) => {
         if (!q.trim()) { setResults([]); setMode("browse"); return; }
-        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, { cache: "no-store" });
-        const json = await res.json();
-        setResults(json.items || []);
-        setMode("search");
+        try {
+          const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, { cache: "no-store" });
+          const json = await res.json();
+          
+          // Map the normalized API results to MediaItem
+          const mappedResults: MediaItem[] = (json || []).map((item: any) => ({
+            id: item.id,
+            title: item.title,
+            category: item.type === 'movie' ? 'film' : item.type, // Map 'movie' -> 'film'
+            imageUrl: item.imageUrl,
+            description: item.description,
+            source: "supa", // Or keep original source if needed, but 'supa' works for now
+            sourceId: item.sourceId,
+            year: item.releaseYear ? parseInt(item.releaseYear) : undefined,
+            genres: [], // Search API might not return genres yet
+          }));
+
+          setResults(mappedResults);
+          setMode("search");
+        } catch (error) {
+          console.error("Search failed", error);
+          setResults([]);
+        }
       }, 300),
     []
   );

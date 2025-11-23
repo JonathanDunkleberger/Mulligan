@@ -2,7 +2,7 @@ export type Category = "film" | "game" | "anime" | "tv" | "book";
 
 export type MediaItem = {
   id: string;
-  source: "tmdb" | "igdb" | "gbooks";
+  source: "tmdb" | "igdb" | "gbooks" | "supa";
   sourceId: string;
   category: Category;
   title: string;
