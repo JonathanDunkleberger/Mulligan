@@ -11,6 +11,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import DetailsModal from "./_components/DetailsModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getUserFavoriteIds } from "@/actions/user-data";
+import { saveAndFavoriteItem } from "@/actions/save-and-favorite";
+import { removeFavorite } from "@/actions/remove-favorite";
 
 type Mode = "browse" | "search" | "recommend";
 const ORDER: Category[] = ["film", "tv", "anime", "game", "book"];
@@ -24,14 +27,20 @@ export default function Page() {
   const [recs, setRecs] = useState<Record<Category, MediaItem[]>>({ film: [], game: [], anime: [], tv: [], book: [] });
   const [heroItem, setHeroItem] = useState<MediaItem | null>(null);
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     // Sync initial state
     setFavorites(FavoritesStore.read());
     const unsub = FavoritesStore.subscribe(setFavorites);
 
-    async function loadTrending() {
+    async function loadData() {
       try {
+        // 1. Load Favorites
+        const ids = await getUserFavoriteIds();
+        setLikedIds(new Set(ids));
+
+        // 2. Load Trending
         const categories: Category[] = ["film", "tv", "anime", "game", "book"];
         const newPopular: Record<Category, MediaItem[]> = { film: [], game: [], anime: [], tv: [], book: [] };
 
@@ -88,13 +97,62 @@ export default function Page() {
         }
 
       } catch (error) {
-        console.error("Failed to load trending:", error);
+        console.error("Failed to load data:", error);
       }
     }
 
-    loadTrending();
+    loadData();
     return () => { unsub(); };
   }, []);
+
+  const handleToggleFavorite = async (item: MediaItem) => {
+    // Optimistic Update
+    const isLiked = likedIds.has(item.id);
+    setLikedIds(prev => {
+      const next = new Set(prev);
+      if (isLiked) next.delete(item.id);
+      else next.add(item.id);
+      return next;
+    });
+
+    if (!isLiked) {
+      // Add to favorites
+      const mediaData = {
+        id: item.id,
+        title: item.title,
+        type: (item.category === 'film' ? 'movie' : item.category) as 'movie' | 'tv' | 'book' | 'game',
+        description: item.summary || "",
+        imageUrl: item.imageUrl || "",
+        releaseYear: item.year?.toString() || "",
+        sourceId: item.sourceId,
+        backdropUrl: item.backdropUrl,
+        genres: item.genres,
+        matchScore: item.rating ? Math.round(item.rating * 10) : undefined,
+        trailerUrl: item.videos && item.videos.length > 0 ? `https://www.youtube.com/watch?v=${item.videos[0].id}` : undefined
+      };
+
+      const result = await saveAndFavoriteItem(mediaData);
+      if (!result.success) {
+        // Revert on failure
+        setLikedIds(prev => {
+          const next = new Set(prev);
+          next.delete(item.id);
+          return next;
+        });
+      }
+    } else {
+      // Remove from favorites
+      const result = await removeFavorite(item.sourceId);
+      if (!result.success) {
+         // Revert on failure (re-add it)
+         setLikedIds(prev => {
+            const next = new Set(prev);
+            next.add(item.id);
+            return next;
+          });
+      }
+    }
+  };
 
   const runSearch = useMemo(
     () =>
@@ -206,7 +264,12 @@ export default function Page() {
                     <h3 className="text-xl font-bold mb-2 text-gray-100 flex items-center gap-2">
                       {rail.title}
                     </h3>
-                    <MediaCarousel items={rail.items} onSelect={setSelectedItem} />
+                    <MediaCarousel 
+                      items={rail.items} 
+                      onSelect={setSelectedItem} 
+                      likedIds={likedIds}
+                      onToggleFavorite={handleToggleFavorite}
+                    />
                   </div>
                 ))}
               </div>

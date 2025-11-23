@@ -7,10 +7,14 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function MediaCarousel({ 
   items,
-  onSelect
+  onSelect,
+  likedIds,
+  onToggleFavorite
 }: { 
   items: MediaItem[];
   onSelect?: (item: MediaItem) => void;
+  likedIds?: Set<string>;
+  onToggleFavorite?: (item: MediaItem) => void;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
 
@@ -37,6 +41,8 @@ export default function MediaCarousel({
               <MediaTile 
                 item={it} 
                 onClick={() => onSelect?.(it)}
+                isFavorited={likedIds?.has(it.id)}
+                onToggleFavorite={onToggleFavorite}
               />
             </div>
           ))}

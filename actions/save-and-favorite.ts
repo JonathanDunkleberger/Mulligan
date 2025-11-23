@@ -2,6 +2,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
+import { auth } from "@clerk/nextjs/server";
 
 // Initialize Supabase with Service Role Key to allow inserting into media_items
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -28,31 +29,42 @@ interface MediaResult {
   matchScore?: number;
 }
 
-export async function saveAndFavoriteItem(item: MediaResult, userId: string) {
+export async function saveAndFavoriteItem(item: MediaResult) {
   try {
-    // 1. Check Existence
-    // We search by title and type to avoid duplicates
-    const { data: existingItems, error: searchError } = await supabase
-      .from("media_items")
-      .select("id")
-      .eq("title", item.title)
-      .eq("type", item.type)
-      .limit(1);
-
-    if (searchError) {
-      console.error("Error searching for item:", searchError);
-      throw new Error("Database search failed");
+    // 0. Authentication
+    const { userId } = auth();
+    if (!userId) {
+      throw new Error("User not authenticated");
     }
 
-    let mediaId: string;
+    // 1. Check Existence (Optimized)
+    // Try to find by sourceId first (more reliable), then fallback to title/type
+    let mediaId: string | null = null;
 
-    if (existingItems && existingItems.length > 0) {
-      // Found existing item
-      mediaId = existingItems[0].id;
-      
-      // Optional: Update metadata if it's missing or we have better data now?
-      // For now, we'll just use the existing ID.
+    // Check by source_id in metadata
+    const { data: existingBySource, error: sourceError } = await supabase
+      .from("media_items")
+      .select("id")
+      .eq("metadata->>source_id", item.sourceId)
+      .limit(1);
+
+    if (existingBySource && existingBySource.length > 0) {
+      mediaId = existingBySource[0].id;
     } else {
+      // Fallback: Check by title and type
+      const { data: existingByTitle, error: titleError } = await supabase
+        .from("media_items")
+        .select("id")
+        .eq("title", item.title)
+        .eq("type", item.type)
+        .limit(1);
+        
+      if (existingByTitle && existingByTitle.length > 0) {
+        mediaId = existingByTitle[0].id;
+      }
+    }
+
+    if (!mediaId) {
       // 2. Lazy Ingest (New Item)
       console.log(`Lazy ingesting: ${item.title}`);
 
@@ -72,11 +84,11 @@ export async function saveAndFavoriteItem(item: MediaResult, userId: string) {
           description: item.description,
           metadata: { 
             cover_url: item.imageUrl,
-            backdrop_url: item.backdropUrl,
-            trailer_url: item.trailerUrl,
-            genres: item.genres,
-            release_year: item.releaseYear,
-            vote_average: item.matchScore,
+            backdrop_url: item.backdropUrl || "",
+            trailer_url: item.trailerUrl || "",
+            genres: item.genres || [],
+            release_year: item.releaseYear || "",
+            vote_average: item.matchScore || 0,
             source_id: item.sourceId
           },
           embedding: embedding,
@@ -85,8 +97,8 @@ export async function saveAndFavoriteItem(item: MediaResult, userId: string) {
         .single();
 
       if (insertError) {
-        console.error("Error inserting item:", insertError);
-        throw new Error("Failed to ingest new item");
+        console.error("Supabase Insert Error:", insertError);
+        return { success: false, error: insertError.message };
       }
       
       mediaId = newItem.id;
@@ -101,14 +113,13 @@ export async function saveAndFavoriteItem(item: MediaResult, userId: string) {
       );
 
     if (favError) {
-      console.error("Error favoriting item:", favError);
-      throw new Error("Failed to favorite item");
+      console.error("Supabase Favorite Error:", favError);
+      return { success: false, error: favError.message };
     }
 
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in saveAndFavoriteItem:", error);
-    // Return success: false so the UI can handle it
-    return { success: false };
+    return { success: false, error: error.message || "Unknown error" };
   }
 }
