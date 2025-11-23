@@ -104,10 +104,14 @@ function scoreItem(
 export function recommendForAllCategories(
   favorites: MediaItem[],
   pools: Record<Category, MediaItem[]>,
+  blacklist: MediaItem[] = [],
   n = 12
 ): Record<Category, MediaItem[]> {
   const favIds = new Set(favorites.map(f => f.id));
   const favTitles = new Set(favorites.map(f => normTitle(f.title)));
+  const blacklistIds = new Set(blacklist.map(b => b.id));
+  const blacklistTitles = new Set(blacklist.map(b => normTitle(b.title)));
+  
   const weights = genreWeights(favorites);
 
   const out: Record<Category, MediaItem[]> = { film: [], game: [], anime: [], tv: [], book: [] };
@@ -115,24 +119,29 @@ export function recommendForAllCategories(
   (Object.keys(pools) as Category[]).forEach((cat) => {
     const pool = pools[cat] || [];
 
-    // Avoid the most obvious stuff: drop top-K popular before scoring (keep a fallback in case pool is small)
-    const dropTopK = Math.min(6, Math.floor(pool.length * 0.15));
-    const candidates = pool.slice(dropTopK);
+    // Filter out blacklist items (trending) and favorites
+    const candidates = pool.filter(item => 
+      !blacklistIds.has(item.id) && 
+      !blacklistTitles.has(normTitle(item.title)) &&
+      !favIds.has(item.id) && 
+      !favTitles.has(normTitle(item.title))
+    );
 
     // Score
     const scored = candidates
       .map((item, i) => ({
         item,
-        score: scoreItem(item, favorites, i + dropTopK, weights)
-      }))
-      // Novelty filter: not in favorites, not exact duplicate by normalized title,
-      // and avoid same-franchise repeats greedily.
-      .filter(({ item }) => !favIds.has(item.id) && !favTitles.has(normTitle(item.title)));
+        score: scoreItem(item, favorites, i, weights) // Rank i is relative to this filtered pool now
+      }));
 
     // Diversity: greedy pick avoiding same normalized title prefix
     const seenFranchise = new Set<string>();
     const pick: MediaItem[] = [];
-    for (const { item } of scored.sort((a,b)=>b.score - a.score)) {
+    
+    // Sort by score descending
+    scored.sort((a,b) => b.score - a.score);
+
+    for (const { item } of scored) {
       const key = normTitle(item.title).split(" ")[0]; // coarse franchise key
       if (seenFranchise.has(key)) continue;
       pick.push(item);
@@ -140,14 +149,19 @@ export function recommendForAllCategories(
       if (pick.length >= n) break;
     }
 
-    // If we didn’t reach n (pool small), top off from remaining scored items
+    // If we didn’t reach n, fill from the original pool (including blacklist if absolutely necessary, but prefer not to)
+    // Let's just fill from the remaining scored candidates first
     if (pick.length < n) {
-      for (const { item } of scored.sort((a,b)=>b.score - a.score)) {
+      for (const { item } of scored) {
         if (pick.find(p => p.id === item.id)) continue;
         pick.push(item);
         if (pick.length >= n) break;
       }
     }
+    
+    // If still not enough, we might have been too aggressive with the blacklist. 
+    // But the user wants "90% different", so returning fewer items is better than returning trending ones.
+    // We will leave it as is.
 
     out[cat] = pick;
   });

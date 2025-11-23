@@ -29,9 +29,11 @@ export async function POST(req: NextRequest) {
     book: gbooks
   };
 
-  // 2. Fetch "similar" items for the user's top 3 favorites to expand the pool
-  // We pick the first 3 (assuming they are recent or relevant)
-  const seeds = favorites.slice(0, 3);
+  // 2. Fetch "similar" items for a RANDOM sample of the user's favorites to expand the pool
+  // We pick 6 random items to get a better spread than just the top 3
+  const shuffled = [...favorites].sort(() => 0.5 - Math.random());
+  const seeds = shuffled.slice(0, 6);
+  
   const similarResults = await Promise.all(seeds.map(async (seed) => {
     try {
       if (seed.source === "tmdb" && (seed.category === "film" || seed.category === "tv" || seed.category === "anime")) {
@@ -57,8 +59,17 @@ export async function POST(req: NextRequest) {
     }
   });
 
+  // Create a blacklist of the original popular items to ensure "For You" is different
+  const blacklist = [
+    ...tmdb.film, 
+    ...tmdb.tv, 
+    ...tmdb.anime, 
+    ...igdb, 
+    ...gbooks
+  ];
+
   // 3. Run the recommender logic
-  const recs = recommendForAllCategories(favorites, pools, 15);
+  const recs = recommendForAllCategories(favorites, pools, blacklist, 15);
 
   return NextResponse.json(recs);
 }
