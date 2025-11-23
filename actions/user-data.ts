@@ -1,16 +1,15 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
-import { auth } from "@clerk/nextjs/server";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!; // Use Service Role to bypass RLS
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function getUserFavoriteIds(): Promise<string[]> {
-  const { userId } = auth();
-  if (!userId) return [];
-
+  // Placeholder user ID for guest access
+  const userId = "guest_user_123";
+  
   // Fetch media_items linked to favorites to get the source_id
   const { data, error } = await supabase
     .from("favorites")

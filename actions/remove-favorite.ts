@@ -1,7 +1,6 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
-import { auth } from "@clerk/nextjs/server";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!; 
@@ -9,10 +8,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function removeFavorite(sourceId: string) {
   try {
-    const { userId } = auth();
-    if (!userId) {
-      throw new Error("User not authenticated");
-    }
+    const userId = "guest_user_123";
 
     // 1. Find the media_id for this sourceId
     const { data: mediaItems, error: findError } = await supabase

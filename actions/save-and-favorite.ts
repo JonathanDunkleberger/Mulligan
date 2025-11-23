@@ -1,7 +1,6 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
-import { auth } from "@clerk/nextjs/server";
 import OpenAI from "openai";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -13,13 +12,9 @@ const openai = new OpenAI({
 });
 
 export async function saveAndFavoriteItem(item: any) {
-  // 1. Authentication Check
-  const { userId } = auth();
-  if (!userId) {
-    console.error("❌ Save Failed: No User ID found.");
-    return { success: false, error: "User not logged in" };
-  }
-
+  // 1. Authentication Check (Placeholder)
+  const userId = "guest_user_123";
+  
   try {
     // 2. Check if item exists (Idempotency)
     // We check by Title + Type because IDs from external APIs might overlap
