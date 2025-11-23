@@ -127,6 +127,19 @@ export async function tmdbPopular(): Promise<Record<"film" | "tv" | "anime", Med
   return { film, tv, anime };
 }
 
+export async function tmdbGetRecommendations(id: string, category: "film" | "tv" | "anime"): Promise<MediaItem[]> {
+  if (!ENV.TMDB_API_KEY) return [];
+  const type = category === "film" ? "movie" : "tv";
+  // Extract the numeric ID from "tmdb:film:123"
+  const numericId = id.split(":").pop();
+  if (!numericId) return [];
+
+  const res = await tmdbFetch(`/${type}/${numericId}/recommendations`, { page: "1" });
+  if (!res || !res.results) return [];
+  
+  return res.results.map((r: any) => mapTmdbListItem(r, category)).slice(0, 10);
+}
+
 /* -------------------- IGDB via Twitch -------------------- */
 let _token: { value: string; expires: number } | null = null;
 async function getTwitchToken() {
@@ -236,6 +249,35 @@ export async function igdbPopular(): Promise<MediaItem[]> {
   })).slice(0, 20);
 }
 
+export async function igdbGetSimilar(id: string): Promise<MediaItem[]> {
+  // Extract numeric ID
+  const numericId = id.split(":").pop();
+  if (!numericId) return [];
+
+  // Fetch the game's similar_games field
+  const q = `
+    fields similar_games.id, similar_games.name, similar_games.first_release_date, similar_games.cover.image_id, similar_games.genres.name, similar_games.summary, similar_games.rating, similar_games.involved_companies.company.name, similar_games.involved_companies.developer;
+    where id = ${numericId};
+  `;
+  const rows = await igdbQuery("games", q);
+  if (!rows || !rows.length || !rows[0].similar_games) return [];
+
+  return rows[0].similar_games.map((g: any) => ({
+    id: `igdb:game:${g.id}`,
+    source: "igdb" as const,
+    sourceId: String(g.id),
+    category: "game" as const,
+    title: g.name,
+    year: g.first_release_date ? new Date(g.first_release_date * 1000).getUTCFullYear() : undefined,
+    imageUrl: g.cover?.image_id ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${g.cover.image_id}.jpg` : undefined,
+    backdropUrl: undefined, // similar_games expansion usually doesn't include screenshots to save bandwidth, can be added if needed
+    genres: (g.genres || []).map((x: any) => x.name),
+    summary: g.summary,
+    rating: g.rating ? g.rating / 10 : undefined,
+    creators: g.involved_companies?.filter((c: any) => c.developer).map((c: any) => c.company.name),
+  })).slice(0, 10);
+}
+
 
 /* -------------------- Google Books -------------------- */
 
@@ -276,9 +318,13 @@ export async function gbooksSearch(query: string): Promise<MediaItem[]> {
 export async function gbooksPopular(): Promise<MediaItem[]> {
   if (!ENV.GOOGLE_BOOKS_API_KEY) return [];
   const url = new URL("https://www.googleapis.com/books/v1/volumes");
+  // Improved query for popular books: filter by english, books only, and use a broader "fiction" search sorted by relevance (which usually surfaces popular items)
+  // or try "bestsellers"
   url.searchParams.set("q", "subject:fiction");
+  url.searchParams.set("langRestrict", "en");
+  url.searchParams.set("printType", "books");
   url.searchParams.set("maxResults", "40");
-  url.searchParams.set("orderBy", "relevance");
+  url.searchParams.set("orderBy", "relevance"); // "newest" often returns obscure self-published works
   url.searchParams.set("key", ENV.GOOGLE_BOOKS_API_KEY);
   const res = await fetch(url, { cache: "force-cache" });
   if (!res.ok) return [];
@@ -298,8 +344,52 @@ export async function gbooksPopular(): Promise<MediaItem[]> {
       genres: info.categories || [],
       summary: info.description,
       creators: info.authors,
+      rating: info.averageRating ? info.averageRating * 2 : undefined,
     } as MediaItem;
   }).slice(0, 20);
+}
+
+export async function gbooksGetSimilar(id: string): Promise<MediaItem[]> {
+  // GBooks doesn't have a "similar" endpoint. We'll fetch the book details to get author/categories, then search.
+  const details = await gbooksGetDetails(id.split(":").pop()!);
+  if (!details) return [];
+
+  const author = details.creators?.[0];
+  if (!author) return [];
+
+  // Search for other books by this author
+  const url = new URL("https://www.googleapis.com/books/v1/volumes");
+  url.searchParams.set("q", `inauthor:"${author}"`);
+  url.searchParams.set("langRestrict", "en");
+  url.searchParams.set("printType", "books");
+  url.searchParams.set("maxResults", "10");
+  url.searchParams.set("orderBy", "relevance");
+  if (ENV.GOOGLE_BOOKS_API_KEY) url.searchParams.set("key", ENV.GOOGLE_BOOKS_API_KEY);
+  
+  const res = await fetch(url, { cache: "force-cache" });
+  if (!res.ok) return [];
+  const json = await res.json();
+  
+  return (json.items || [])
+    .filter((b: any) => b.id !== details.sourceId) // Exclude the original book
+    .map((b: any) => {
+      const info = b.volumeInfo || {};
+      const thumb = normalizeGBooksThumb(info.imageLinks?.thumbnail || info.imageLinks?.smallThumbnail);
+      const year = info.publishedDate ? Number(String(info.publishedDate).slice(0, 4)) : undefined;
+      return {
+        id: `gbooks:book:${b.id}`,
+        source: "gbooks" as const,
+        sourceId: b.id,
+        category: "book" as const,
+        title: info.title || "Untitled",
+        year,
+        imageUrl: thumb,
+        genres: info.categories || [],
+        summary: info.description,
+        creators: info.authors,
+        rating: info.averageRating ? info.averageRating * 2 : undefined,
+      } as MediaItem;
+    });
 }
 
 export async function gbooksGetDetails(id: string): Promise<MediaItem | null> {
