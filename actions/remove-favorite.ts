@@ -1,20 +1,17 @@
 "use server";
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/app/_lib/supabase";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!; 
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-export async function removeFavorite(sourceId: string) {
+export async function removeFavorite(source: string, sourceId: string) {
   try {
     const userId = "guest_user_123";
 
-    // 1. Find the media_id for this sourceId
+    // 1. Find the media_id
     const { data: mediaItems, error: findError } = await supabase
       .from("media_items")
       .select("id")
-      .eq("metadata->>source_id", sourceId)
+      .eq("source", source)
+      .eq("source_id", sourceId)
       .limit(1);
 
     if (findError) {
@@ -23,7 +20,6 @@ export async function removeFavorite(sourceId: string) {
     }
 
     if (!mediaItems || mediaItems.length === 0) {
-      // Item doesn't exist in DB, so it can't be favorited.
       return { success: true };
     }
 
@@ -46,3 +42,4 @@ export async function removeFavorite(sourceId: string) {
     return { success: false, error: error.message };
   }
 }
+

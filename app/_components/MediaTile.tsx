@@ -47,16 +47,16 @@ export default function MediaTile({
       {/* Hover Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 p-4 flex flex-col justify-end rounded-md">
         
-        <div className="absolute top-2 right-2 flex flex-col gap-2 z-10">
+        <div className="absolute top-2 right-2 flex flex-col gap-2 z-50">
           <button 
-            className="w-8 h-8 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white rounded-full flex items-center justify-center transition-colors border border-white/10"
+            className="w-8 h-8 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white rounded-full flex items-center justify-center transition-colors border border-white/10 cursor-pointer"
             onClick={handleHeartClick}
             title={isFavorited ? "Saved" : "Add to Favorites"}
           >
             <Heart size={16} className={isFavorited ? "fill-red-500 text-red-500" : "text-white"} />
           </button>
           <button 
-            className="w-8 h-8 bg-white text-black rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+            className="w-8 h-8 bg-white text-black rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
               onClick?.();

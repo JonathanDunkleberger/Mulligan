@@ -4,6 +4,7 @@ import type { MediaItem } from "../_lib/schema";
 import MediaTile from "../_components/MediaTile";
 import DetailsModal from "../_components/DetailsModal";
 import { getUserFavorites } from "@/actions/user-data";
+import { removeFavorite } from "@/actions/remove-favorite";
 
 export default function MyMediaPage() {
   const [favorites, setFavorites] = useState<MediaItem[]>([]);
@@ -25,6 +26,17 @@ export default function MyMediaPage() {
     loadFavorites();
   }, []);
 
+  const handleRemoveFavorite = async (item: MediaItem) => {
+    // Optimistic update
+    setFavorites(prev => prev.filter(i => i.id !== item.id));
+    
+    const result = await removeFavorite(item.source, item.sourceId);
+    if (!result.success) {
+      // Revert
+      setFavorites(prev => [...prev, item]);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">My Media</h1>
@@ -40,15 +52,23 @@ export default function MyMediaPage() {
               key={f.id} 
               item={f} 
               onClick={() => setSelectedItem(f)}
+              isFavorited={true}
+              onToggleFavorite={handleRemoveFavorite}
             />
           ))}
         </div>
       )}
 
       {selectedItem && (
-        <DetailsModal item={selectedItem} onClose={() => setSelectedItem(null)} />
+        <DetailsModal 
+          item={selectedItem} 
+          onClose={() => setSelectedItem(null)} 
+          isFavorited={true}
+          onToggleFavorite={handleRemoveFavorite}
+        />
       )}
     </div>
   );
 }
+
 

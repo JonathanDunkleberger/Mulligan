@@ -5,9 +5,6 @@ import { Category, MediaItem } from "./_lib/schema";
 import { debounce } from "./_lib/debounce";
 import MediaCarousel from "./_components/MediaCarousel";
 import MediaTile from "./_components/MediaTile";
-import FavoritesBar from "./_components/FavoritesBar";
-import { FavoritesStore } from "./_state/favorites";
-import { motion, AnimatePresence } from "framer-motion";
 import DetailsModal from "./_components/DetailsModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +19,7 @@ export default function Page() {
   const [mode, setMode] = useState<Mode>("browse");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<MediaItem[]>([]);
-  const [favorites, setFavorites] = useState<MediaItem[]>(FavoritesStore.read());
+  const [favorites, setFavorites] = useState<MediaItem[]>([]); // We don't strictly need this for the home page unless for "For You" logic
   const [popular, setPopular] = useState<Record<Category, MediaItem[]>>({ film: [], game: [], anime: [], tv: [], book: [] });
   const [recs, setRecs] = useState<Record<Category, MediaItem[]>>({ film: [], game: [], anime: [], tv: [], book: [] });
   const [heroItem, setHeroItem] = useState<MediaItem | null>(null);
@@ -30,13 +27,9 @@ export default function Page() {
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    // Sync initial state
-    setFavorites(FavoritesStore.read());
-    const unsub = FavoritesStore.subscribe(setFavorites);
-
     async function loadData() {
       try {
-        // 1. Load Favorites
+        // 1. Load Favorites IDs
         const ids = await getUserFavoriteIds();
         setLikedIds(new Set(ids));
 
@@ -45,26 +38,11 @@ export default function Page() {
         const newPopular: Record<Category, MediaItem[]> = { film: [], game: [], anime: [], tv: [], book: [] };
 
         await Promise.all(categories.map(async (cat) => {
-          // Map 'film' to 'movie' for the API query
-          const apiCategory = cat === "film" ? "movie" : cat;
-          const res = await fetch(`/api/trending?category=${apiCategory}`);
+          // Map 'film' to 'movie' for the API query if needed, but our API handles 'film'
+          const res = await fetch(`/api/trending?category=${cat}`);
           if (!res.ok) return;
           const data = await res.json();
-
-          newPopular[cat] = data.map((item: any) => {
-            // Normalize source to match getUserFavoriteIds (gbooks -> google_books)
-            const source = item.source === 'gbooks' ? 'google_books' : item.source;
-            const sourceId = item.sourceId;
-            const uniqueId = `${source}-${sourceId}`;
-
-            return {
-              ...item,
-              id: uniqueId,
-              source: source,
-              // Ensure videos is an array (adapters might not return it)
-              videos: item.videos || []
-            } as MediaItem;
-          });
+          newPopular[cat] = data;
         }));
 
         setPopular(newPopular);
@@ -81,7 +59,6 @@ export default function Page() {
     }
 
     loadData();
-    return () => { unsub(); };
   }, []);
 
   const handleToggleFavorite = async (item: MediaItem) => {
@@ -96,22 +73,9 @@ export default function Page() {
 
     if (!isLiked) {
       // Add to favorites
-      const mediaData = {
-        id: item.id,
-        title: item.title,
-        type: (item.category === 'film' ? 'movie' : item.category) as 'movie' | 'tv' | 'book' | 'game',
-        description: item.summary || "",
-        imageUrl: item.imageUrl || "",
-        releaseYear: item.year?.toString() || "",
-        sourceId: item.sourceId,
-        backdropUrl: item.backdropUrl,
-        genres: item.genres,
-        matchScore: item.rating ? Math.round(item.rating * 10) : undefined,
-        trailerUrl: item.videos && item.videos.length > 0 ? `https://www.youtube.com/watch?v=${item.videos[0].id}` : undefined
-      };
-
-      const result = await saveAndFavoriteItem(mediaData);
+      const result = await saveAndFavoriteItem(item);
       if (!result.success) {
+        console.error("Failed to save favorite:", result.error);
         // Revert on failure
         setLikedIds(prev => {
           const next = new Set(prev);
@@ -121,8 +85,9 @@ export default function Page() {
       }
     } else {
       // Remove from favorites
-      const result = await removeFavorite(item.sourceId);
+      const result = await removeFavorite(item.source, String(item.sourceId));
       if (!result.success) {
+         console.error("Failed to remove favorite:", result.error);
          // Revert on failure (re-add it)
          setLikedIds(prev => {
             const next = new Set(prev);
@@ -140,7 +105,7 @@ export default function Page() {
         try {
           const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, { cache: "no-store" });
           const json = await res.json();
-          
+
           // Map the normalized API results to MediaItem
           const mappedResults: MediaItem[] = (json || []).map((item: any) => ({
             id: `${item.source}-${item.sourceId}`, // Unique ID
@@ -149,12 +114,12 @@ export default function Page() {
             imageUrl: item.imageUrl,
             summary: item.description,
             source: item.source,
-            sourceId: item.sourceId,
+            sourceId: String(item.sourceId), // Ensure string
             year: item.releaseYear ? parseInt(item.releaseYear) : undefined,
             genres: [], // Search API might not return genres yet
           }));
 
-          setResults(mappedResults);
+          setResults(mappedResults); // API now returns MediaItem[]
           setMode("search");
         } catch (error) {
           console.error("Search failed", error);
@@ -167,13 +132,33 @@ export default function Page() {
   function onChangeQuery(v: string) { setQuery(v); runSearch(v); }
   
   async function getRecs() {
-    if (favorites.length < 1) return;
+    // We need to fetch full favorites objects for recommendations
+    // Or we can just call the API and let it handle it if it knows the user ID
+    // But the current API expects a body with favorites.
+    // Let's fetch favorites first if we don't have them.
+    
+    // For now, let's assume we need to fetch them.
+    // Ideally, we should have them in state or context.
+    // But to keep it simple, let's fetch them here.
+    
     setMode("recommend");
     try {
+      // Fetch favorites from server to pass to recs API
+      // Alternatively, update /api/recs to fetch favorites from DB using userId
+      // But let's stick to the existing pattern if possible, or update it.
+      // The user said "robust recommendation system", so maybe the API should do the heavy lifting.
+      
+      // Let's fetch favorites here
+      const { getUserFavorites } = await import("@/actions/user-data");
+      const favs = await getUserFavorites();
+      setFavorites(favs);
+
+      if (favs.length < 1) return;
+
       const res = await fetch("/api/recs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ favorites })
+        body: JSON.stringify({ favorites: favs })
       });
       const json = await res.json();
       setRecs(json);
@@ -217,8 +202,8 @@ export default function Page() {
               <Button 
                 variant={mode === "recommend" ? "secondary" : "ghost"} 
                 onClick={getRecs}
-                disabled={favorites.length < 1}
-                className={favorites.length < 1 ? "opacity-50" : ""}
+                // disabled={likedIds.size < 1} // We can check likedIds size
+                className={likedIds.size < 1 ? "opacity-50" : ""}
               >
                 For You
               </Button>
@@ -232,7 +217,14 @@ export default function Page() {
                 <h2 className="text-2xl font-bold mb-6">Results for "{query}"</h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                   {results.map((item) => (
-                    <MediaTile key={item.id} item={item} onClick={() => setSelectedItem(item)} showAddHint />
+                    <MediaTile 
+                      key={item.id} 
+                      item={item} 
+                      onClick={() => setSelectedItem(item)} 
+                      showAddHint 
+                      isFavorited={likedIds.has(item.id)}
+                      onToggleFavorite={handleToggleFavorite}
+                    />
                   ))}
                 </div>
               </div>
@@ -259,8 +251,14 @@ export default function Page() {
 
 
       {selectedItem && (
-        <DetailsModal item={selectedItem} onClose={() => setSelectedItem(null)} />
+        <DetailsModal 
+          item={selectedItem} 
+          onClose={() => setSelectedItem(null)} 
+          isFavorited={likedIds.has(selectedItem.id)}
+          onToggleFavorite={handleToggleFavorite}
+        />
       )}
     </>
   );
 }
+

@@ -3,14 +3,13 @@
 "use client";
 
 import { MediaItem } from "../_lib/schema";
-import { FavoritesStore } from "../_state/favorites";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
-import { Play } from "lucide-react";
+import { Play, Heart } from "lucide-react";
 
 function Pill({ children }: { children: React.ReactNode }) {
   return (
@@ -23,9 +22,13 @@ function Pill({ children }: { children: React.ReactNode }) {
 export default function DetailsModal({
   item: initialItem,
   onClose,
+  isFavorited,
+  onToggleFavorite
 }: {
   item: MediaItem;
   onClose: () => void;
+  isFavorited?: boolean;
+  onToggleFavorite?: (item: MediaItem) => void;
 }) {
   const [item, setItem] = useState<MediaItem>(initialItem);
   const [loading, setLoading] = useState(true);
@@ -90,8 +93,13 @@ export default function DetailsModal({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 p-8 pt-4">
             <div className="md:col-span-2 space-y-6">
               <div className="flex gap-4">
-                 <Button size="lg" className="bg-white text-black hover:bg-gray-200 font-bold px-8" onClick={() => FavoritesStore.add(item)}>
-                  + My List
+                 <Button 
+                  size="lg" 
+                  className={`font-bold px-8 flex items-center gap-2 ${isFavorited ? "bg-red-600 hover:bg-red-700 text-white" : "bg-white text-black hover:bg-gray-200"}`}
+                  onClick={() => onToggleFavorite?.(item)}
+                >
+                  <Heart className={isFavorited ? "fill-white" : ""} size={20} />
+                  {isFavorited ? "Saved" : "My List"}
                 </Button>
                 {/* Placeholder for "Play" or "Buy" links if we had them */}
               </div>
@@ -171,3 +179,4 @@ export default function DetailsModal({
     </Dialog>
   );
 }
+
