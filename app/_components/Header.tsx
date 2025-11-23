@@ -20,7 +20,7 @@ export default function Header() {
     <>
       <header className="flex items-center justify-between px-8 h-[60px] bg-background/50 backdrop-blur-md border-b border-white/10 sticky top-0 z-50">
         <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2 text-primary hover:text-accent transition-colors">
+          <a href="/" className="flex items-center gap-2 text-primary hover:text-accent transition-colors">
             <Image 
               src="/cat-silhouette-on-transparent-background-free-png.webp" 
               alt="Feyris Logo" 
@@ -29,7 +29,7 @@ export default function Header() {
               className="object-contain brightness-0 invert"
             />
             <span className="text-xl font-black tracking-tight">Feyris</span>
-          </Link>
+          </a>
           
           <nav className="hidden md:flex items-center gap-6">
             <Link href="/" className={navLinkClass("/")}>Home</Link>

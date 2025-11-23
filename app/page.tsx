@@ -108,15 +108,10 @@ export default function Page() {
 
           // Map the normalized API results to MediaItem
           const mappedResults: MediaItem[] = (json || []).map((item: any) => ({
-            id: `${item.source}-${item.sourceId}`, // Unique ID
-            title: item.title,
-            category: item.category, // Already normalized by API
-            imageUrl: item.imageUrl,
-            summary: item.description || item.summary,
-            source: item.source,
+            ...item, // Keep original properties including correct ID
+            id: item.id, // Use the ID from the API (e.g. tmdb:film:123)
             sourceId: String(item.sourceId), // Ensure string
             year: item.year || (item.releaseYear ? parseInt(item.releaseYear) : undefined),
-            genres: item.genres || [], 
           }));
 
           setResults(mappedResults); // API now returns MediaItem[]
