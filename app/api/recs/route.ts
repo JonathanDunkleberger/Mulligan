@@ -6,7 +6,8 @@ import {
   igdbGetSimilar, 
   gbooksGetSimilar,
   tmdbDiscover,
-  igdbDiscover
+  igdbDiscover,
+  gbooksDiscover
 } from "../../_lib/adapters.server";
 import OpenAI from "openai";
 
@@ -106,7 +107,12 @@ export async function POST(req: NextRequest) {
     const categories: Category[] = ["film", "tv", "anime", "game", "book"];
     const results: Record<Category, MediaItem[]> = { film: [], tv: [], anime: [], game: [], book: [] };
 
-    const favoritedIds = new Set(favorites.map((f: any) => f.media_items?.id));
+    // Fix: Handle potential array structure in media_items and normalize IDs
+    const favoritedIds = new Set<string>();
+    favorites.forEach((f: any) => {
+      const item = Array.isArray(f.media_items) ? f.media_items[0] : f.media_items;
+      if (item?.id) favoritedIds.add(item.id);
+    });
 
     // Helper: Calculate cosine similarity (dot product for normalized vectors)
     const cosineSim = (a: number[], b: number[]) => {
@@ -186,8 +192,9 @@ export async function POST(req: NextRequest) {
                externalPromises.push(tmdbDiscover(cat, topGenres));
              } else if (cat === 'game') {
                externalPromises.push(igdbDiscover(topGenres));
+             } else if (cat === 'book') {
+               externalPromises.push(gbooksDiscover(topGenres));
              }
-             // GBooks doesn't have a dedicated discover, but getSimilar covers author/subject well enough
            }
 
            const externalResults = await Promise.all(externalPromises);

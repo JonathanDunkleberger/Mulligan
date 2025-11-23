@@ -137,7 +137,17 @@ export async function tmdbGetRecommendations(id: string, category: "film" | "tv"
   const res = await tmdbFetch(`/${type}/${numericId}/recommendations`, { page: "1" });
   if (!res || !res.results) return [];
   
-  return res.results.map((r: any) => mapTmdbListItem(r, category)).slice(0, 10);
+  let results = res.results;
+
+  // Strict filtering for Anime to prevent pollution (e.g. "Severance" appearing in Anime)
+  if (category === "anime") {
+    results = results.filter((r: any) => {
+      const isAnime = (r.origin_country || []).includes("JP") || (r.genre_ids || []).includes(16);
+      return isAnime;
+    });
+  }
+
+  return results.map((r: any) => mapTmdbListItem(r, category)).slice(0, 10);
 }
 
 /* -------------------- IGDB via Twitch -------------------- */
@@ -471,6 +481,45 @@ export async function gbooksGetSimilar(id: string): Promise<MediaItem[]> {
         rating: info.averageRating ? info.averageRating * 2 : undefined,
       } as MediaItem;
     });
+}
+
+export async function gbooksDiscover(genreNames: string[]): Promise<MediaItem[]> {
+  if (!ENV.GOOGLE_BOOKS_API_KEY) return [];
+  
+  // Google Books supports "subject:fiction", "subject:fantasy", etc.
+  // We'll pick the top genre or "fiction" if none.
+  const subject = genreNames.length > 0 ? genreNames[0] : "fiction";
+  
+  const url = new URL("https://www.googleapis.com/books/v1/volumes");
+  url.searchParams.set("q", `subject:${subject}`);
+  url.searchParams.set("langRestrict", "en");
+  url.searchParams.set("printType", "books");
+  url.searchParams.set("maxResults", "20");
+  url.searchParams.set("orderBy", "relevance");
+  url.searchParams.set("key", ENV.GOOGLE_BOOKS_API_KEY);
+  
+  const res = await fetch(url, { cache: "force-cache" });
+  if (!res.ok) return [];
+  const json = await res.json();
+  
+  return (json.items || []).map((b: any) => {
+    const info = b.volumeInfo || {};
+    const thumb = normalizeGBooksThumb(info.imageLinks?.thumbnail || info.imageLinks?.smallThumbnail);
+    const year = info.publishedDate ? Number(String(info.publishedDate).slice(0, 4)) : undefined;
+    return {
+      id: `gbooks:book:${b.id}`,
+      source: "gbooks" as const,
+      sourceId: b.id,
+      category: "book" as const,
+      title: info.title || "Untitled",
+      year,
+      imageUrl: thumb,
+      genres: info.categories || [],
+      summary: info.description,
+      creators: info.authors,
+      rating: info.averageRating ? info.averageRating * 2 : undefined,
+    } as MediaItem;
+  });
 }
 
 export async function gbooksGetDetails(id: string): Promise<MediaItem | null> {
