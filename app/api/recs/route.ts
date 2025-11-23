@@ -144,6 +144,7 @@ export async function POST(req: NextRequest) {
         1. Identify 4 specific titles that perfectly match the user's taste but are NOT in the list.
            - 2 should be "Safe Bets" (highly acclaimed or cult classics similar to their likes).
            - 2 should be "Hidden Gems" (lesser known but high quality matches).
+           - IMPORTANT: Do NOT suggest titles by the same authors/creators as the user's favorites if possible. Focus on similar vibes, not just same creator.
         2. Identify 2 specific sub-genres or themes (e.g. "Cyberpunk", "Space Opera", "Cozy Mystery") that the user seems to like.
         
         Return ONLY a JSON object with this structure:
@@ -187,10 +188,16 @@ export async function POST(req: NextRequest) {
             const bestMatch = searchResults[0]; // Top result is usually best
             if (!bestMatch) return [];
 
-            // Get recommendations based on this seed
-            if (cat === 'game') return await igdbGetSimilar(bestMatch.id);
-            if (cat === 'book') return await gbooksGetSimilar(bestMatch.id);
-            return await tmdbGetRecommendations(bestMatch.id, cat);
+            // Return the seed itself (High Priority)
+            const seedResult = [bestMatch];
+
+            // Get recommendations based on this seed (Expansion)
+            let similar: MediaItem[] = [];
+            if (cat === 'game') similar = await igdbGetSimilar(bestMatch.id);
+            else if (cat === 'book') similar = await gbooksGetSimilar(bestMatch.id);
+            else similar = await tmdbGetRecommendations(bestMatch.id, cat);
+
+            return [...seedResult, ...similar];
           } catch (e) {
             return [];
           }
@@ -212,11 +219,20 @@ export async function POST(req: NextRequest) {
       const candidates = allResults.flat();
 
       // C. Filter and Fill
+      // Normalize favorited titles for stricter filtering
+      const favoritedTitles = new Set(favorites.map((f: any) => {
+        const item = Array.isArray(f.media_items) ? f.media_items[0] : f.media_items;
+        return item?.title?.toLowerCase().trim();
+      }));
+
       for (const item of candidates) {
         if (results[cat].length >= 24) break;
         
         // Strict ID check
         if (favoritedIds.has(item.id)) continue;
+
+        // Strict Title check (fuzzy match backup)
+        if (item.title && favoritedTitles.has(item.title.toLowerCase().trim())) continue;
         
         // Deduplicate within results
         if (results[cat].some(r => r.id === item.id)) continue;
