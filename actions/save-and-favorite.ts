@@ -16,38 +16,48 @@ export async function saveAndFavoriteItem(item: MediaItem) {
     // 2. Check if item exists (Idempotency)
     const { data: existing } = await supabase
       .from('media_items')
-      .select('id')
+      .select('id, embedding')
       .eq('source', item.source)
       .eq('source_id', item.sourceId)
       .maybeSingle();
 
     let mediaId = existing?.id;
 
-    // 3. Lazy Ingest (If New)
-    if (!mediaId) {
+    // 3. Lazy Ingest (If New OR Missing Embedding)
+    if (!mediaId || !existing?.embedding) {
       console.log(`⚡ Generating Vector for: ${item.title}`);
       const embeddingResp = await openai.embeddings.create({
         model: 'text-embedding-3-small',
         input: `${item.title} ${item.summary || ""} ${item.genres?.join(" ")}`
       });
+      const vec = embeddingResp.data[0].embedding;
 
-      const { data: newItem, error: insertError } = await supabase
-        .from('media_items')
-        .insert({
-          title: item.title,
-          type: item.category,
-          description: item.summary || "",
-          source: item.source,
-          source_id: item.sourceId,
-          embedding: embeddingResp.data[0].embedding,
-          // CRITICAL: Save ALL metadata here so My Media looks good
-          metadata: item
-        })
-        .select('id')
-        .single();
+      if (mediaId) {
+        // Update existing
+        await supabase
+          .from('media_items')
+          .update({ embedding: vec })
+          .eq('id', mediaId);
+      } else {
+        // Insert new
+        const { data: newItem, error: insertError } = await supabase
+          .from('media_items')
+          .insert({
+            title: item.title,
+            type: item.category,
+            description: item.summary || "",
+            source: item.source,
+            source_id: item.sourceId,
+            embedding: vec,
+            // CRITICAL: Save ALL metadata here so My Media looks good
+            metadata: item
+          })
+          .select('id')
+          .single();
 
-      if (insertError) throw insertError;
-      mediaId = newItem.id;
+        if (insertError) throw insertError;
+        mediaId = newItem.id;
+      }
     }
 
     // 4. Favorite Link (The "Heart")

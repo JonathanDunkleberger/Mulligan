@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "../../_lib/supabase";
 import { MediaItem, Category } from "../../_lib/schema";
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 // Helper to calculate vector mean
 function calculateMeanVector(embeddings: number[][]): number[] {
@@ -22,12 +27,7 @@ function calculateMeanVector(embeddings: number[][]): number[] {
 }
 
 export async function POST(req: NextRequest) {
-  // We don't rely on the body favorites anymore for the core logic, 
-  // we fetch fresh embeddings from the DB to ensure we have the vectors.
-  // But we might use the body to know *which* items to exclude if the client has local state.
-  // For now, let's fetch everything server-side.
-  
-  const userId = "guest_user_123"; // Hardcoded for now as per other files
+  const userId = "guest_user_123"; 
 
   try {
     // 1. Fetch all user favorites with their embeddings
@@ -37,6 +37,8 @@ export async function POST(req: NextRequest) {
         media_items (
           id,
           title,
+          description,
+          type,
           embedding,
           metadata
         )
@@ -44,16 +46,47 @@ export async function POST(req: NextRequest) {
       .eq("user_id", userId);
 
     if (error || !favorites || favorites.length === 0) {
-      return NextResponse.json({ error: "No favorites found" }, { status: 400 });
+      // Return empty instead of 400 to prevent UI crash
+      return NextResponse.json({ film: [], tv: [], anime: [], game: [], book: [] });
     }
 
     // Extract embeddings
-    const embeddings = favorites
+    let embeddings = favorites
       .map((f: any) => f.media_items?.embedding)
       .filter((e: any) => e !== null && Array.isArray(e));
 
+    // SELF-HEALING: If we have favorites but no embeddings, generate them now
     if (embeddings.length === 0) {
-      return NextResponse.json({ error: "No embeddings found for favorites" }, { status: 400 });
+      console.log("⚠️ No embeddings found. Attempting self-healing...");
+      const itemsToHeal = favorites.slice(0, 3); // Heal top 3 to get started
+      
+      for (const f of itemsToHeal) {
+        const item = f.media_items;
+        if (!item) continue;
+        
+        try {
+          const embeddingResp = await openai.embeddings.create({
+            model: 'text-embedding-3-small',
+            input: `${item.title} ${item.description || ""} ${item.type}`
+          });
+          const vec = embeddingResp.data[0].embedding;
+          
+          // Update DB
+          await supabase
+            .from('media_items')
+            .update({ embedding: vec })
+            .eq('id', item.id);
+            
+          embeddings.push(vec);
+        } catch (err) {
+          console.error("Failed to heal item:", item.title, err);
+        }
+      }
+    }
+
+    if (embeddings.length === 0) {
+      // Still no embeddings? Return empty.
+      return NextResponse.json({ film: [], tv: [], anime: [], game: [], book: [] });
     }
 
     // 2. Calculate Mean Vector (The "Vibe")
@@ -63,24 +96,23 @@ export async function POST(req: NextRequest) {
     const categories: Category[] = ["film", "tv", "anime", "game", "book"];
     const results: Record<Category, MediaItem[]> = { film: [], tv: [], anime: [], game: [], book: [] };
 
-    // We exclude items the user has already favorited
     const favoritedIds = new Set(favorites.map((f: any) => f.media_items?.id));
 
     await Promise.all(categories.map(async (cat) => {
       const { data: recs, error: rpcError } = await supabase.rpc("match_media_items", {
         query_embedding: meanVector,
-        match_threshold: 0.3, // Lower threshold to ensure we get results
+        match_threshold: 0.3, 
         match_count: 20,
         filter_category: cat
       });
 
       if (rpcError) {
         console.error(`RPC Error for ${cat}:`, rpcError);
+        // Fallback? For now just return empty for this cat
         return;
       }
 
       if (recs) {
-        // Map back to MediaItem and filter out existing favorites
         results[cat] = recs
           .filter((r: any) => !favoritedIds.has(r.id))
           .map((r: any) => r.metadata as MediaItem);
