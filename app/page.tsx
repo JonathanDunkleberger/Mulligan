@@ -52,39 +52,17 @@ export default function Page() {
           const data = await res.json();
 
           newPopular[cat] = data.map((item: any) => {
-            // Extract video ID from trailerUrl if present
-            let videos = [];
-            if (item.trailerUrl) {
-              const videoId = item.trailerUrl.split('v=')[1];
-              if (videoId) {
-                videos.push({
-                  id: videoId,
-                  title: "Trailer",
-                  thumbnail: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
-                });
-              }
-            }
-
-            // Use source and sourceId directly from API
-            const source = item.source;
+            // Normalize source to match getUserFavoriteIds (gbooks -> google_books)
+            const source = item.source === 'gbooks' ? 'google_books' : item.source;
             const sourceId = item.sourceId;
-            // Create a unique ID for the frontend to prevent collisions
             const uniqueId = `${source}-${sourceId}`;
 
             return {
+              ...item,
               id: uniqueId,
-              title: item.title,
-              category: cat,
-              imageUrl: item.imageUrl || "https://placehold.co/400x600?text=" + encodeURIComponent(item.title),
-              backdropUrl: item.backdropUrl,
-              description: item.overview,
-              summary: item.overview,
               source: source,
-              sourceId: sourceId,
-              year: item.releaseYear ? parseInt(item.releaseYear) : undefined,
-              genres: item.genres || [],
-              rating: item.matchScore ? item.matchScore / 10 : undefined, // Convert 0-100 to 0-10
-              videos: videos
+              // Ensure videos is an array (adapters might not return it)
+              videos: item.videos || []
             } as MediaItem;
           });
         }));
@@ -169,7 +147,7 @@ export default function Page() {
             title: item.title,
             category: item.type === 'movie' ? 'film' : item.type, // Map 'movie' -> 'film'
             imageUrl: item.imageUrl,
-            description: item.description,
+            summary: item.description,
             source: item.source,
             sourceId: item.sourceId,
             year: item.releaseYear ? parseInt(item.releaseYear) : undefined,

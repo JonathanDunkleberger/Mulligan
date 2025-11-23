@@ -5,23 +5,24 @@ import type { MediaItem } from "../_lib/schema";
 import MediaTile from "../_components/MediaTile";
 import DetailsModal from "../_components/DetailsModal";
 
+import { useAuth } from "@clerk/nextjs";
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
 export default function MyMediaPage() {
+  const { userId } = useAuth();
   const [favorites, setFavorites] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
 
   useEffect(() => {
     async function loadFavorites() {
+      if (!userId) return;
       setLoading(true);
       try {
-        // Hardcoded user ID for now (replace with Clerk auth later)
-        const userId = "user_123";
-        
         const { data, error } = await supabase
           .from('favorites')
           .select('media_id, media_items (*)') // Inner Join
