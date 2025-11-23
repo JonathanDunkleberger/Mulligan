@@ -1,18 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 import type { MediaItem } from "../_lib/schema";
 import MediaTile from "../_components/MediaTile";
 import DetailsModal from "../_components/DetailsModal";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { getUserFavorites } from "@/actions/user-data";
 
 export default function MyMediaPage() {
-  // Placeholder user ID for guest access
-  const userId = "guest_user_123";
   const [favorites, setFavorites] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
@@ -21,44 +14,8 @@ export default function MyMediaPage() {
     async function loadFavorites() {
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('favorites')
-          .select('media_id, media_items (*)') // Inner Join
-          .eq('user_id', userId);
-
-        if (error) {
-          console.error("Error fetching favorites:", error);
-          return;
-        }
-
-        if (data) {
-          const items: MediaItem[] = data.map((row: any) => {
-            const item = row.media_items;
-            const meta = item.metadata || {};
-            
-            return {
-              id: item.id,
-              title: item.title,
-              category: item.type === 'movie' ? 'film' : item.type,
-              source: "supa",
-              sourceId: meta.source_id || item.id,
-              imageUrl: meta.cover_url || meta.imageUrl || "https://placehold.co/400x600?text=" + encodeURIComponent(item.title),
-              backdropUrl: meta.backdrop_url,
-              genres: meta.genres || [],
-              year: meta.release_year ? parseInt(meta.release_year) : (meta.year ? parseInt(meta.year) : undefined),
-              summary: item.description,
-              rating: meta.vote_average !== undefined ? meta.vote_average / 10 : meta.rating,
-              creators: meta.creators,
-              status: meta.status,
-              videos: meta.trailer_url ? [{
-                id: meta.trailer_url.split('v=')[1] || 'trailer',
-                title: 'Trailer',
-                thumbnail: `https://img.youtube.com/vi/${meta.trailer_url.split('v=')[1] || ''}/mqdefault.jpg`
-              }] : []
-            };
-          });
-          setFavorites(items);
-        }
+        const items = await getUserFavorites();
+        setFavorites(items);
       } catch (error) {
         console.error("Failed to load favorites", error);
       } finally {
