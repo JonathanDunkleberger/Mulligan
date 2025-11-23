@@ -279,6 +279,87 @@ export async function igdbGetSimilar(id: string): Promise<MediaItem[]> {
 }
 
 
+export async function tmdbDiscover(category: "film" | "tv" | "anime", genreNames: string[]): Promise<MediaItem[]> {
+  if (!ENV.TMDB_API_KEY) return [];
+  const type = category === "film" ? "movie" : "tv";
+  
+  // Reverse map genre names to IDs
+  const genreIds: number[] = [];
+  for (const [id, name] of Object.entries(TMDB_GENRES)) {
+    if (genreNames.some(g => g.toLowerCase() === name.toLowerCase())) {
+      genreIds.push(Number(id));
+    }
+  }
+  
+  if (genreIds.length === 0 && category !== "anime") return [];
+
+  const params: Record<string, string> = {
+    page: "1",
+    sort_by: "popularity.desc",
+    "vote_count.gte": "100",
+  };
+
+  if (category === "anime") {
+    params.with_genres = "16"; // Animation
+    params.with_keywords = "210024"; // Anime keyword often used, or just rely on Animation genre + JP origin
+  } else {
+    if (genreIds.length > 0) params.with_genres = genreIds.join(",");
+  }
+
+  const res = await tmdbFetch(`/discover/${type}`, params);
+  if (!res || !res.results) return [];
+
+  const items: MediaItem[] = [];
+  for (const r of res.results) {
+    // For anime, double check origin country if possible, but TMDB discover is loose
+    if (category === "anime") {
+       const isAnime = (r.origin_country || []).includes("JP") || (r.genre_ids || []).includes(16);
+       if (!isAnime) continue;
+    }
+    items.push(mapTmdbListItem(r, category));
+  }
+  
+  return items.slice(0, 12);
+}
+
+export async function igdbDiscover(genreNames: string[]): Promise<MediaItem[]> {
+  if (!ENV.TWITCH_CLIENT_ID || !ENV.TWITCH_CLIENT_SECRET) return [];
+  
+  // IGDB genres are strings in our DB, but we need to match them. 
+  // IGDB API allows filtering by genre name if we join.
+  // Or we can just search for games with these genres.
+  // Let's try a simple approach: search for games where genres.name = "X"
+  
+  if (genreNames.length === 0) return [];
+  
+  // Construct a where clause
+  // genres.name = ("RPG", "Shooter")
+  const genreList = genreNames.map(g => `"${g}"`).join(",");
+  
+  const q = `
+    fields id, name, first_release_date, cover.image_id, genres.name, summary, rating, involved_companies.company.name, involved_companies.developer, screenshots.image_id;
+    where genres.name = (${genreList}) & rating > 70 & rating_count > 20;
+    sort rating_count desc;
+    limit 15;
+  `;
+  
+  const rows = await igdbQuery("games", q);
+  return (rows || []).map((g: any) => ({
+    id: `igdb:game:${g.id}`,
+    source: "igdb" as const,
+    sourceId: String(g.id),
+    category: "game" as const,
+    title: g.name,
+    year: g.first_release_date ? new Date(g.first_release_date * 1000).getUTCFullYear() : undefined,
+    imageUrl: g.cover?.image_id ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${g.cover.image_id}.jpg` : undefined,
+    backdropUrl: g.screenshots?.[0]?.image_id ? `https://images.igdb.com/igdb/image/upload/t_screenshot_big/${g.screenshots[0].image_id}.jpg` : undefined,
+    genres: (g.genres || []).map((x: any) => x.name),
+    summary: g.summary,
+    rating: g.rating ? g.rating / 10 : undefined,
+    creators: g.involved_companies?.filter((c: any) => c.developer).map((c: any) => c.company.name),
+  }));
+}
+
 /* -------------------- Google Books -------------------- */
 
 function normalizeGBooksThumb(url?: string): string | undefined {
