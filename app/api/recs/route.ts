@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "../../_lib/supabase";
 import { MediaItem, Category } from "../../_lib/schema";
+import { 
+  tmdbGetRecommendations, 
+  igdbGetSimilar, 
+  gbooksGetSimilar 
+} from "../../_lib/adapters.server";
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -102,23 +107,67 @@ export async function POST(req: NextRequest) {
     const favoritedIds = new Set(favorites.map((f: any) => f.media_items?.id));
 
     await Promise.all(categories.map(async (cat) => {
+      // A. Vector Search (Primary)
       const { data: recs, error: rpcError } = await supabase.rpc("match_media_items", {
         query_embedding: meanVector,
         match_threshold: 0.3, 
-        match_count: 20,
+        match_count: 24,
         filter_category: cat
       });
 
       if (rpcError) {
         console.error(`RPC Error for ${cat}:`, rpcError);
-        // Fallback? For now just return empty for this cat
-        return;
-      }
-
-      if (recs) {
+      } else if (recs) {
         results[cat] = recs
           .filter((r: any) => !favoritedIds.has(r.id))
           .map((r: any) => r.metadata as MediaItem);
+      }
+
+      // B. External Backfill (Secondary)
+      // If we don't have enough vector matches, fetch "similar" items from external APIs
+      // based on the user's existing favorites in this category.
+      if (results[cat].length < 24) {
+        // Find favorites of this category to use as seeds
+        const catFavorites = favorites.filter((f: any) => {
+           const item = Array.isArray(f.media_items) ? f.media_items[0] : f.media_items;
+           return item && item.type === cat;
+        });
+
+        if (catFavorites.length > 0) {
+           // Pick up to 3 random favorites to diversify the backfill
+           const seeds = catFavorites.sort(() => 0.5 - Math.random()).slice(0, 3);
+           
+           for (const seed of seeds) {
+              if (results[cat].length >= 24) break;
+              
+              const item = Array.isArray(seed.media_items) ? seed.media_items[0] : seed.media_items;
+              let similarItems: MediaItem[] = [];
+              
+              try {
+                 if (cat === 'film' || cat === 'tv' || cat === 'anime') {
+                    similarItems = await tmdbGetRecommendations(item.id, cat);
+                 } else if (cat === 'game') {
+                    similarItems = await igdbGetSimilar(item.id);
+                 } else if (cat === 'book') {
+                    similarItems = await gbooksGetSimilar(item.id);
+                 }
+              } catch (err) {
+                 console.error(`External fetch failed for ${cat} seed ${item.title}`, err);
+              }
+              
+              // Append unique items
+              for (const sim of similarItems) {
+                 if (results[cat].length >= 24) break;
+                 
+                 const isFav = favoritedIds.has(sim.id);
+                 const isInResults = results[cat].some(r => r.id === sim.id);
+                 
+                 if (!isFav && !isInResults) {
+                    results[cat].push(sim);
+                 }
+              }
+           }
+        }
       }
     }));
 
