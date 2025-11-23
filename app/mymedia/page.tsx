@@ -1,9 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
 import type { MediaItem } from "../_lib/schema";
 import MediaTile from "../_components/MediaTile";
 import DetailsModal from "../_components/DetailsModal";
-import { getFavorites } from "@/actions/get-favorites";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default function MyMediaPage() {
   const [favorites, setFavorites] = useState<MediaItem[]>([]);
@@ -16,9 +21,40 @@ export default function MyMediaPage() {
       try {
         // Hardcoded user ID for now (replace with Clerk auth later)
         const userId = "user_123";
-        const data = await getFavorites(userId);
-        // Cast the result to MediaItem[] as the action returns a compatible shape
-        setFavorites(data as unknown as MediaItem[]);
+        
+        const { data, error } = await supabase
+          .from('favorites')
+          .select('media_id, media_items (*)') // Inner Join
+          .eq('user_id', userId);
+
+        if (error) {
+          console.error("Error fetching favorites:", error);
+          return;
+        }
+
+        if (data) {
+          const items: MediaItem[] = data.map((row: any) => {
+            const item = row.media_items;
+            const meta = item.metadata || {};
+            
+            return {
+              id: item.id,
+              title: item.title,
+              category: item.type === 'movie' ? 'film' : item.type,
+              source: "supa",
+              sourceId: meta.source_id || item.id,
+              imageUrl: meta.cover_url || meta.imageUrl || "https://placehold.co/400x600?text=" + encodeURIComponent(item.title),
+              backdropUrl: meta.backdrop_url,
+              genres: meta.genres || [],
+              year: meta.year ? parseInt(meta.year) : undefined,
+              summary: item.description,
+              rating: meta.rating,
+              creators: meta.creators,
+              status: meta.status,
+            };
+          });
+          setFavorites(items);
+        }
       } catch (error) {
         console.error("Failed to load favorites", error);
       } finally {

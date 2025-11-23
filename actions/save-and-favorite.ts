@@ -12,7 +12,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Define the interface matching the search API result
+// Define the interface matching the search API result and TrendingItem
 interface MediaResult {
   id: string;
   title: string;
@@ -21,6 +21,11 @@ interface MediaResult {
   imageUrl: string;
   releaseYear: string;
   sourceId: string;
+  // Extended metadata
+  backdropUrl?: string;
+  trailerUrl?: string;
+  genres?: string[];
+  matchScore?: number;
 }
 
 export async function saveAndFavoriteItem(item: MediaResult, userId: string) {
@@ -44,6 +49,9 @@ export async function saveAndFavoriteItem(item: MediaResult, userId: string) {
     if (existingItems && existingItems.length > 0) {
       // Found existing item
       mediaId = existingItems[0].id;
+      
+      // Optional: Update metadata if it's missing or we have better data now?
+      // For now, we'll just use the existing ID.
     } else {
       // 2. Lazy Ingest (New Item)
       console.log(`Lazy ingesting: ${item.title}`);
@@ -64,7 +72,11 @@ export async function saveAndFavoriteItem(item: MediaResult, userId: string) {
           description: item.description,
           metadata: { 
             cover_url: item.imageUrl,
+            backdrop_url: item.backdropUrl,
+            trailer_url: item.trailerUrl,
+            genres: item.genres,
             year: item.releaseYear,
+            external_rating: item.matchScore,
             source_id: item.sourceId
           },
           embedding: embedding,

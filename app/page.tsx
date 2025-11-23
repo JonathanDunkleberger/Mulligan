@@ -15,8 +15,6 @@ import { Input } from "@/components/ui/input";
 type Mode = "browse" | "search" | "recommend";
 const ORDER: Category[] = ["film", "tv", "anime", "game", "book"];
 
-import { getCategoryRecommendations } from "@/actions/get-recommendations";
-
 export default function Page() {
   const [mode, setMode] = useState<Mode>("browse");
   const [query, setQuery] = useState("");
@@ -32,35 +30,53 @@ export default function Page() {
     setFavorites(FavoritesStore.read());
     const unsub = FavoritesStore.subscribe(setFavorites);
 
-    async function loadDeepCuts() {
+    async function loadTrending() {
       try {
-        // A. Call the new Engine (Supabase)
-        // Hardcode a generic user ID or use the real one if you have Auth set up
-        const userId = "user_123"; 
-        
-        // Fetch for all categories to populate the rails
         const categories: Category[] = ["film", "tv", "anime", "game", "book"];
         const newPopular: Record<Category, MediaItem[]> = { film: [], game: [], anime: [], tv: [], book: [] };
 
         await Promise.all(categories.map(async (cat) => {
-          // Map 'film' to 'movie' for the DB query if needed, but the action takes 'type'
-          // The DB enum has 'movie', schema has 'film'.
-          const dbType = cat === "film" ? "movie" : cat;
-          const data = await getCategoryRecommendations(userId, dbType);
+          // Map 'film' to 'movie' for the API query
+          const apiCategory = cat === "film" ? "movie" : cat;
+          const res = await fetch(`/api/trending?category=${apiCategory}`);
+          if (!res.ok) return;
+          const data = await res.json();
 
-          // B. THE ADAPTER (Make it fit your UI)
-          newPopular[cat] = data.map((item: any) => ({
-            id: item.id,
-            title: item.title,
-            category: cat, 
-            // Use placeholder if no image
-            imageUrl: item.metadata?.cover_url || item.metadata?.imageUrl || "https://placehold.co/400x600?text=" + encodeURIComponent(item.title),
-            description: item.description,
-            source: "supa",
-            sourceId: item.id,
-            year: item.metadata?.year,
-            genres: item.metadata?.genres || [],
-          } as MediaItem));
+          newPopular[cat] = data.map((item: any) => {
+            // Extract video ID from trailerUrl if present
+            let videos = [];
+            if (item.trailerUrl) {
+              const videoId = item.trailerUrl.split('v=')[1];
+              if (videoId) {
+                videos.push({
+                  id: videoId,
+                  title: "Trailer",
+                  thumbnail: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
+                });
+              }
+            }
+
+            // Parse source and sourceId from the ID (e.g. "tmdb-12345")
+            const [sourcePrefix, ...rest] = item.id.split('-');
+            const sourceId = rest.join('-');
+            const source = sourcePrefix === 'gbooks' ? 'gbooks' : sourcePrefix === 'igdb' ? 'igdb' : 'tmdb';
+
+            return {
+              id: item.id,
+              title: item.title,
+              category: cat,
+              imageUrl: item.imageUrl || "https://placehold.co/400x600?text=" + encodeURIComponent(item.title),
+              backdropUrl: item.backdropUrl,
+              description: item.overview,
+              summary: item.overview,
+              source: source,
+              sourceId: sourceId,
+              year: item.releaseYear ? parseInt(item.releaseYear) : undefined,
+              genres: item.genres || [],
+              rating: item.matchScore ? item.matchScore / 10 : undefined, // Convert 0-100 to 0-10
+              videos: videos
+            } as MediaItem;
+          });
         }));
 
         setPopular(newPopular);
@@ -72,11 +88,11 @@ export default function Page() {
         }
 
       } catch (error) {
-        console.error("Failed to load deep cuts:", error);
+        console.error("Failed to load trending:", error);
       }
     }
 
-    loadDeepCuts();
+    loadTrending();
     return () => { unsub(); };
   }, []);
 
@@ -140,7 +156,7 @@ export default function Page() {
     return ORDER.map((cat) => ({
       title: mode === "recommend" 
         ? (cat === "film" ? "Movies for you" : cat === "game" ? "Games for you" : cat === "anime" ? "Anime for you" : cat === "tv" ? "TV for you" : "Books for you")
-        : (cat === "film" ? "Trending Films" : cat === "game" ? "Popular Games" : cat === "anime" ? "Top Anime" : cat === "tv" ? "Top TV" : "Popular Books"),
+        : (cat === "film" ? "Trending Films" : cat === "game" ? "Popular Games" : cat === "anime" ? "Top Anime" : cat === "tv" ? "Trending TV" : "Popular Books"),
       category: cat as Category, 
       items: source[cat] || []
     })).filter(r => r.items.length > 0);

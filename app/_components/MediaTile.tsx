@@ -32,7 +32,11 @@ export default function MediaTile({
         description: item.summary || "",
         imageUrl: item.imageUrl || "",
         releaseYear: item.year?.toString() || "",
-        sourceId: item.sourceId
+        sourceId: item.sourceId,
+        backdropUrl: item.backdropUrl,
+        genres: item.genres,
+        matchScore: item.rating ? Math.round(item.rating * 10) : undefined,
+        trailerUrl: item.videos && item.videos.length > 0 ? `https://www.youtube.com/watch?v=${item.videos[0].id}` : undefined
       };
 
       // Hardcoded user ID for now
