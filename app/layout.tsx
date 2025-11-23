@@ -1,5 +1,6 @@
 import "./globals.css";
 import Header from "./_components/Header";
+import { ClerkProvider } from "@clerk/nextjs";
 
 export const metadata = {
   title: "Mulligan — Media Recs",
@@ -8,12 +9,14 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
-      <body className="bg-[#0b0b0f] text-white min-h-screen font-sans antialiased">
-        <Header />
-        {children}
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en" className="dark">
+        <body className="bg-[#0b0b0f] text-white min-h-screen font-sans antialiased">
+          <Header />
+          {children}
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
 

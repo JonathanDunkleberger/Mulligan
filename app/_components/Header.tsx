@@ -4,12 +4,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
-import ProfileModal from "./ProfileModal";
+import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 
 export default function Header() {
   const pathname = usePathname();
-  const [showProfile, setShowProfile] = useState(false);
   
   const navLinkClass = (path: string) => cn(
     "text-sm font-medium transition-colors hover:text-white",
@@ -46,15 +44,18 @@ export default function Header() {
           >
             Join Discord
           </a>
-          <button 
-            className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-black font-bold text-xs hover:bg-accent transition-colors"
-            onClick={() => setShowProfile(true)}
-          >
-            JD
-          </button>
+          <SignedOut>
+            <SignInButton mode="modal">
+              <button className="text-sm font-medium text-white bg-primary px-4 py-2 rounded-md hover:bg-accent transition-colors">
+                Sign In
+              </button>
+            </SignInButton>
+          </SignedOut>
+          <SignedIn>
+            <UserButton afterSignOutUrl="/" />
+          </SignedIn>
         </div>
       </header>
-      <ProfileModal isOpen={showProfile} onClose={() => setShowProfile(false)} />
     </>
   );
 }
