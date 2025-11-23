@@ -110,13 +110,13 @@ export default function Page() {
           const mappedResults: MediaItem[] = (json || []).map((item: any) => ({
             id: `${item.source}-${item.sourceId}`, // Unique ID
             title: item.title,
-            category: item.type === 'movie' ? 'film' : item.type, // Map 'movie' -> 'film'
+            category: item.category, // Already normalized by API
             imageUrl: item.imageUrl,
-            summary: item.description,
+            summary: item.description || item.summary,
             source: item.source,
             sourceId: String(item.sourceId), // Ensure string
-            year: item.releaseYear ? parseInt(item.releaseYear) : undefined,
-            genres: [], // Search API might not return genres yet
+            year: item.year || (item.releaseYear ? parseInt(item.releaseYear) : undefined),
+            genres: item.genres || [], 
           }));
 
           setResults(mappedResults); // API now returns MediaItem[]

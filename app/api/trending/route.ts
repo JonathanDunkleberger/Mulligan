@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   try {
     let results: any[] = [];
 
-    if (category === 'movie') {
+    if (category === 'movie' || category === 'film') {
       const data = await tmdbPopular();
       results = data.film;
     } else if (category === 'tv') {
