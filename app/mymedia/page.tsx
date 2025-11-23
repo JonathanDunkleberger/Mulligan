@@ -46,11 +46,16 @@ export default function MyMediaPage() {
               imageUrl: meta.cover_url || meta.imageUrl || "https://placehold.co/400x600?text=" + encodeURIComponent(item.title),
               backdropUrl: meta.backdrop_url,
               genres: meta.genres || [],
-              year: meta.year ? parseInt(meta.year) : undefined,
+              year: meta.release_year ? parseInt(meta.release_year) : (meta.year ? parseInt(meta.year) : undefined),
               summary: item.description,
-              rating: meta.rating,
+              rating: meta.vote_average !== undefined ? meta.vote_average / 10 : meta.rating,
               creators: meta.creators,
               status: meta.status,
+              videos: meta.trailer_url ? [{
+                id: meta.trailer_url.split('v=')[1] || 'trailer',
+                title: 'Trailer',
+                thumbnail: `https://img.youtube.com/vi/${meta.trailer_url.split('v=')[1] || ''}/mqdefault.jpg`
+              }] : []
             };
           });
           setFavorites(items);

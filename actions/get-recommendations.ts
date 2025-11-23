@@ -3,24 +3,31 @@
 import { createClient } from "@supabase/supabase-js";
 
 // Initialize Supabase client
-// Note: In a real app, you might want to use a singleton or a helper file
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-type MediaItem = {
+// Define the rich return type
+export type RecommendedItem = {
   id: string;
   title: string;
-  type: string;
+  category: string;
   description: string;
-  metadata: any;
-  similarity?: number;
+  imageUrl: string;
+  backdropUrl?: string;
+  trailerUrl?: string;
+  genres: string[];
+  year?: number;
+  matchScore?: number;
+  source: "supa";
+  sourceId: string;
+  videos?: { id: string; title: string; thumbnail: string }[];
 };
 
 export async function getCategoryRecommendations(
   userId: string,
   category: string
-): Promise<MediaItem[]> {
+): Promise<RecommendedItem[]> {
   try {
     // 1. Fetch all favorites for this user to exclude them later
     // and to get the embeddings for the "Shotgun"
@@ -54,7 +61,7 @@ export async function getCategoryRecommendations(
         created_at: f.created_at,
       })) || [];
 
-    let recommendations: MediaItem[] = [];
+    let rawItems: any[] = [];
 
     // Strategy: 0 Favorites -> Recent items
     if (validFavorites.length === 0) {
@@ -62,11 +69,11 @@ export async function getCategoryRecommendations(
         .from("media_items")
         .select("id, title, type, description, metadata")
         .eq("type", category)
-        .limit(15)
-        .returns<MediaItem[]>();
+        .limit(24) // Increased limit
+        .returns<any[]>();
 
       if (recentError) throw recentError;
-      recommendations = recentItems || [];
+      rawItems = recentItems || [];
     } 
     // Strategy: > 0 Favorites -> Shotgun Approach
     else {
@@ -83,7 +90,7 @@ export async function getCategoryRecommendations(
         supabase.rpc("get_recommendations", {
           query_embedding: seed.embedding,
           match_threshold: 0.5, // Adjust based on your embedding model's scale
-          match_count: 5,
+          match_count: 10, // Fetch more to allow for deduping
           filter_type: category,
         })
       );
@@ -91,18 +98,16 @@ export async function getCategoryRecommendations(
       const results = await Promise.all(promises);
 
       // Combine results
-      const allMatches: MediaItem[] = [];
+      const allMatches: any[] = [];
       results.forEach((res: any) => {
         if (res.data) {
-          // res.data is unknown, cast it
-          allMatches.push(...(res.data as MediaItem[]));
+          allMatches.push(...(res.data as any[]));
         }
       });
 
       // Deduplicate
       const seen = new Set<string>();
-      const deduped: MediaItem[] = [];
-
+      
       for (const item of allMatches) {
         // Skip if already favorited
         if (favoriteIds.has(item.id)) continue;
@@ -110,20 +115,49 @@ export async function getCategoryRecommendations(
         if (seen.has(item.id)) continue;
 
         seen.add(item.id);
-        deduped.push(item);
+        rawItems.push(item);
       }
-
-      recommendations = deduped;
     }
 
     // Shuffle (Fisher-Yates)
-    for (let i = recommendations.length - 1; i > 0; i--) {
+    for (let i = rawItems.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [recommendations[i], recommendations[j]] = [recommendations[j], recommendations[i]];
+      [rawItems[i], rawItems[j]] = [rawItems[j], rawItems[i]];
     }
 
-    // Limit to 15
-    return recommendations.slice(0, 15);
+    // Limit to 24 and Map to Rich Object
+    return rawItems.slice(0, 24).map(item => {
+      const meta = item.metadata || {};
+      
+      // Construct videos array if trailer exists
+      let videos: any[] = [];
+      if (meta.trailer_url) {
+        const videoId = meta.trailer_url.split('v=')[1];
+        if (videoId) {
+          videos.push({
+            id: videoId,
+            title: "Trailer",
+            thumbnail: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
+          });
+        }
+      }
+
+      return {
+        id: item.id,
+        title: item.title,
+        category: item.type === 'movie' ? 'film' : item.type,
+        description: item.description,
+        imageUrl: meta.cover_url || meta.imageUrl || "https://placehold.co/400x600?text=" + encodeURIComponent(item.title),
+        backdropUrl: meta.backdrop_url,
+        trailerUrl: meta.trailer_url,
+        genres: meta.genres || [],
+        year: meta.release_year ? parseInt(meta.release_year) : (meta.year ? parseInt(meta.year) : undefined),
+        matchScore: meta.vote_average !== undefined ? meta.vote_average : meta.external_rating,
+        source: "supa",
+        sourceId: meta.source_id || item.id,
+        videos: videos
+      };
+    });
 
   } catch (error) {
     console.error("Error fetching recommendations:", error);

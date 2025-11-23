@@ -75,8 +75,8 @@ export async function saveAndFavoriteItem(item: MediaResult, userId: string) {
             backdrop_url: item.backdropUrl,
             trailer_url: item.trailerUrl,
             genres: item.genres,
-            year: item.releaseYear,
-            external_rating: item.matchScore,
+            release_year: item.releaseYear,
+            vote_average: item.matchScore,
             source_id: item.sourceId
           },
           embedding: embedding,
