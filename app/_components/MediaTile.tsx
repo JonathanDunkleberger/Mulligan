@@ -17,6 +17,13 @@ export default function MediaTile({
   onToggleFavorite?: (item: MediaItem) => void;
   showAddHint?: boolean;
 }) {
+  const handleHeartClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onToggleFavorite) {
+      onToggleFavorite(item);
+    }
+  };
+
   return (
     <div 
       className="tile group cursor-pointer relative transition-all duration-300 hover:scale-125 hover:z-50 origin-center"
