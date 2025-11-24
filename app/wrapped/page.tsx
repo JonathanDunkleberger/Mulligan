@@ -60,7 +60,7 @@ export default function WrappedPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center gap-6 mb-8 ml-20">
+      <div className="flex items-center gap-6 mb-8 ml-10">
         <Link href="/mymedia" className="text-3xl font-bold text-gray-500 hover:text-white transition-colors">My Media</Link>
         <h1 className="text-3xl font-bold text-white">Wrapped</h1>
       </div>
@@ -68,11 +68,11 @@ export default function WrappedPage() {
       {/* AI Insights Hero */}
       {insights && (
         <div className="mb-12 space-y-6">
-          <div className="bg-gradient-to-r from-indigo-900/80 via-purple-900/80 to-pink-900/80 p-8 rounded-3xl border border-white/10 shadow-2xl relative overflow-hidden">
+          <div className="bg-white/5 p-8 rounded-3xl border border-white/10 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
             
             <div className="relative z-10">
-              <p className="text-pink-300 font-medium tracking-widest text-sm uppercase mb-2">Your Media Aura</p>
+              <p className="text-gray-400 font-medium tracking-widest text-sm uppercase mb-2">Your Media Aura</p>
               <h2 className="text-4xl md:text-6xl font-black text-white mb-6 leading-tight">
                 {insights.vibe}
               </h2>
@@ -84,7 +84,7 @@ export default function WrappedPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Master Rec Card */}
-            <div className="bg-black/40 p-8 rounded-3xl border border-white/10 hover:border-primary/50 transition-colors group">
+            <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-primary/50 transition-colors group">
               <div className="flex items-start justify-between mb-4">
                 <h3 className="text-gray-400 font-medium uppercase tracking-wider text-sm">The Master Recommendation</h3>
                 <span className="bg-primary/20 text-primary text-xs px-3 py-1 rounded-full">99% Match</span>
@@ -99,17 +99,17 @@ export default function WrappedPage() {
 
             {/* Fun Fact & Era */}
             <div className="space-y-6">
-              <div className="bg-emerald-900/20 p-6 rounded-3xl border border-emerald-500/20">
-                <h3 className="text-emerald-400 font-medium uppercase tracking-wider text-sm mb-2">Did You Know?</h3>
-                <p className="text-lg text-emerald-100 font-medium">
+              <div className="bg-white/5 p-6 rounded-3xl border border-white/10">
+                <h3 className="text-gray-400 font-medium uppercase tracking-wider text-sm mb-2">Did You Know?</h3>
+                <p className="text-lg text-white font-medium">
                   {insights.funFact}
                 </p>
               </div>
               
-              <div className="bg-amber-900/20 p-6 rounded-3xl border border-amber-500/20 flex items-center justify-between">
+              <div className="bg-white/5 p-6 rounded-3xl border border-white/10 flex items-center justify-between">
                 <div>
-                  <h3 className="text-amber-400 font-medium uppercase tracking-wider text-sm mb-1">Golden Era</h3>
-                  <p className="text-2xl text-amber-100 font-bold">{insights.topEra}</p>
+                  <h3 className="text-gray-400 font-medium uppercase tracking-wider text-sm mb-1">Golden Era</h3>
+                  <p className="text-2xl text-white font-bold">{insights.topEra}</p>
                 </div>
                 <div className="text-4xl opacity-50">⏳</div>
               </div>
