@@ -221,7 +221,7 @@ export default function Page() {
                       item={item}
                       onClick={() => handleItemClick(item)}
                       isFavorited={likedIds.has(item.id)}
-                      onToggleFavorite={() => toggleFavorite(item)}
+                      onToggleFavorite={() => handleToggleFavorite(item)}
                     />
                   ))}
                 </div>
@@ -235,7 +235,7 @@ export default function Page() {
                     </h3>
                     <MediaCarousel 
                       items={rail.items} 
-                      onSelect={setSelectedItem} 
+                      onSelect={handleItemClick} 
                       likedIds={likedIds}
                       onToggleFavorite={handleToggleFavorite}
                     />
