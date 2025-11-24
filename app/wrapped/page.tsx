@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { getUserFavorites } from "@/actions/user-data";
 import type { MediaItem } from "../_lib/schema";
 
+import Link from "next/link";
+
 export default function WrappedPage() {
   const [favorites, setFavorites] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +47,11 @@ export default function WrappedPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <div className="flex items-center gap-6 mb-6 ml-4">
+        <Link href="/mymedia" className="text-3xl font-bold text-gray-500 hover:text-white transition-colors">My Media</Link>
+        <h1 className="text-3xl font-bold text-white">Wrapped</h1>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         {/* Hero Stats */}
         <div className="bg-gradient-to-br from-purple-900/50 to-blue-900/50 p-8 rounded-2xl border border-white/10 flex flex-col justify-center items-center text-center">

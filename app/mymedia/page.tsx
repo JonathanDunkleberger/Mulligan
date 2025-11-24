@@ -6,6 +6,8 @@ import DetailsModal from "../_components/DetailsModal";
 import { getUserFavorites } from "@/actions/user-data";
 import { removeFavorite } from "@/actions/remove-favorite";
 
+import Link from "next/link";
+
 export default function MyMediaPage() {
   const [favorites, setFavorites] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,6 +41,10 @@ export default function MyMediaPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <div className="flex items-center gap-6 mb-6 ml-4">
+        <h1 className="text-3xl font-bold text-white">My Media</h1>
+        <Link href="/wrapped" className="text-3xl font-bold text-gray-500 hover:text-white transition-colors">Wrapped</Link>
+      </div>
       
       {loading ? (
         <div className="text-gray-500">Loading your favorites...</div>
