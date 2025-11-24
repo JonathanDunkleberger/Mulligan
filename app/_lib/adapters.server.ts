@@ -426,36 +426,58 @@ export async function gbooksSearch(query: string): Promise<MediaItem[]> {
 
 export async function gbooksPopular(): Promise<MediaItem[]> {
   if (!ENV.GOOGLE_BOOKS_API_KEY) return [];
-  const url = new URL("https://www.googleapis.com/books/v1/volumes");
-  // Improved query for popular books: filter by english, books only, and use a broader "fiction" search sorted by relevance (which usually surfaces popular items)
-  // or try "bestsellers"
-  url.searchParams.set("q", "subject:fiction");
-  url.searchParams.set("langRestrict", "en");
-  url.searchParams.set("printType", "books");
-  url.searchParams.set("maxResults", "40");
-  url.searchParams.set("orderBy", "relevance"); // "newest" often returns obscure self-published works
-  url.searchParams.set("key", ENV.GOOGLE_BOOKS_API_KEY);
-  const res = await fetch(url, { cache: "force-cache" });
-  if (!res.ok) return [];
-  const json = await res.json();
-  return (json.items || []).map((b: any) => {
-    const info = b.volumeInfo || {};
-    const thumb = normalizeGBooksThumb(info.imageLinks?.thumbnail || info.imageLinks?.smallThumbnail);
-    const year = info.publishedDate ? Number(String(info.publishedDate).slice(0, 4)) : undefined;
-    return {
-      id: `gbooks:book:${b.id}`,
-      source: "gbooks" as const,
-      sourceId: b.id,
-      category: "book" as const,
-      title: info.title || "Untitled",
-      year,
-      imageUrl: thumb,
-      genres: info.categories || [],
-      summary: info.description,
-      creators: info.authors,
-      rating: info.averageRating ? info.averageRating * 2 : undefined,
-    } as MediaItem;
-  }).slice(0, 20);
+  
+  // Google Books API doesn't have a "popular" endpoint, so "subject:fiction" returns public domain classics.
+  // To serve "Whack-a-Mole" style popular hits (Harry Potter, King, etc.), we'll use a curated list of 
+  // mega-popular authors and series to seed the "Popular" section.
+  const POPULAR_SEEDS = [
+    "Harry Potter", "Game of Thrones", "Stephen King", "Brandon Sanderson", 
+    "J.R.R. Tolkien", "The Hunger Games", "Percy Jackson", "Agatha Christie", 
+    "Dan Brown", "Colleen Hoover", "Sarah J. Maas", "Dune", "The Witcher", 
+    "Neil Gaiman", "Haruki Murakami", "James Patterson", "John Grisham",
+    "The Lord of the Rings", "Twilight", "Fifty Shades of Grey"
+  ];
+
+  // Pick 4 random seeds to get a mix of 20 items (5 each)
+  const seeds = POPULAR_SEEDS.sort(() => 0.5 - Math.random()).slice(0, 4);
+  
+  const promises = seeds.map(async (seed) => {
+    const url = new URL("https://www.googleapis.com/books/v1/volumes");
+    url.searchParams.set("q", seed); // Search directly for the popular term
+    url.searchParams.set("langRestrict", "en");
+    url.searchParams.set("printType", "books");
+    url.searchParams.set("maxResults", "5"); // Get top 5 matches for this seed
+    url.searchParams.set("orderBy", "relevance");
+    url.searchParams.set("key", ENV.GOOGLE_BOOKS_API_KEY!);
+    
+    const res = await fetch(url, { cache: "force-cache" });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return (json.items || []).map((b: any) => {
+      const info = b.volumeInfo || {};
+      const thumb = normalizeGBooksThumb(info.imageLinks?.thumbnail || info.imageLinks?.smallThumbnail);
+      const year = info.publishedDate ? Number(String(info.publishedDate).slice(0, 4)) : undefined;
+      return {
+        id: `gbooks:book:${b.id}`,
+        source: "gbooks" as const,
+        sourceId: b.id,
+        category: "book" as const,
+        title: info.title || "Untitled",
+        year,
+        imageUrl: thumb,
+        genres: info.categories || [],
+        summary: info.description,
+        creators: info.authors,
+        rating: info.averageRating ? info.averageRating * 2 : undefined,
+      } as MediaItem;
+    });
+  });
+
+  const results = await Promise.all(promises);
+  const flatResults = results.flat();
+  
+  // Shuffle the final list so it doesn't look like blocks of authors
+  return flatResults.sort(() => 0.5 - Math.random());
 }
 
 export async function gbooksGetSimilar(id: string): Promise<MediaItem[]> {
