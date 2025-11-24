@@ -82,11 +82,12 @@ export default function MediaTile({
                   </span>
                 )}
               </div>
-              {item.genres && item.genres.length > 0 && (
-                <div className="text-[10px] text-gray-300 line-clamp-1 drop-shadow-md mb-3">
-                  {item.genres.slice(0, 3).join(" • ")}
-                </div>
-              )}
+              <div className="text-[10px] text-gray-300 line-clamp-1 drop-shadow-md mb-3">
+                {[
+                  ...(item.genres || []).slice(0, 2),
+                  ...(item.category === "book" && item.creators?.length ? [item.creators[0]] : [])
+                ].join(" • ")}
+              </div>
             </div>
           </div>
         </div>
