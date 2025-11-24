@@ -263,26 +263,42 @@ export async function igdbGetDetails(id: string): Promise<MediaItem | null> {
 
 export async function igdbPopular(): Promise<MediaItem[]> {
   const q = `
-    fields id, name, first_release_date, cover.image_id, genres.name, rating_count, summary, rating, involved_companies.company.name, involved_companies.developer, screenshots.image_id;
+    fields id, name, first_release_date, cover.image_id, genres.name, rating_count, summary, rating, involved_companies.company.name, involved_companies.developer, screenshots.image_id, collection.name;
     where rating_count != null & rating_count > 100;
     sort rating_count desc;
-    limit 40;
+    limit 50;
   `;
   const rows = await igdbQuery("games", q);
-  return (rows || []).map((g: any) => ({
-    id: `igdb:game:${g.id}`,
-    source: "igdb" as const,
-    sourceId: String(g.id),
-    category: "game" as const,
-    title: g.name,
-    year: g.first_release_date ? new Date(g.first_release_date * 1000).getUTCFullYear() : undefined,
-    imageUrl: g.cover?.image_id ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${g.cover.image_id}.jpg` : undefined,
-    backdropUrl: g.screenshots?.[0]?.image_id ? `https://images.igdb.com/igdb/image/upload/t_screenshot_big/${g.screenshots[0].image_id}.jpg` : undefined,
-    genres: (g.genres || []).map((x: any) => x.name),
-    summary: g.summary,
-    rating: g.rating ? g.rating / 10 : undefined,
-    creators: g.involved_companies?.filter((c: any) => c.developer).map((c: any) => c.company.name),
-  })).slice(0, 20);
+  
+  const seenCollections = new Set<string>();
+  const items: MediaItem[] = [];
+
+  for (const g of (rows || [])) {
+    // If it belongs to a collection, check if we've seen it
+    if (g.collection?.name) {
+      if (seenCollections.has(g.collection.name)) {
+        continue; // Skip this game as we already have a popular entry from this series
+      }
+      seenCollections.add(g.collection.name);
+    }
+    
+    items.push({
+      id: `igdb:game:${g.id}`,
+      source: "igdb" as const,
+      sourceId: String(g.id),
+      category: "game" as const,
+      title: g.name,
+      year: g.first_release_date ? new Date(g.first_release_date * 1000).getUTCFullYear() : undefined,
+      imageUrl: g.cover?.image_id ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${g.cover.image_id}.jpg` : undefined,
+      backdropUrl: g.screenshots?.[0]?.image_id ? `https://images.igdb.com/igdb/image/upload/t_screenshot_big/${g.screenshots[0].image_id}.jpg` : undefined,
+      genres: (g.genres || []).map((x: any) => x.name),
+      summary: g.summary,
+      rating: g.rating ? g.rating / 10 : undefined,
+      creators: g.involved_companies?.filter((c: any) => c.developer).map((c: any) => c.company.name),
+    });
+  }
+
+  return items.slice(0, 20);
 }
 
 export async function igdbGetSimilar(id: string): Promise<MediaItem[]> {
