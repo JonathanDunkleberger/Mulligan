@@ -14,7 +14,7 @@ export default function FavoriteButton({ item, initialIsFavorited = false }: { i
     setLoading(true);
     try {
       if (isFavorited) {
-        await removeFavorite(item.id);
+        await removeFavorite(item.source, item.sourceId);
         setIsFavorited(false);
       } else {
         await saveAndFavoriteItem(item);
