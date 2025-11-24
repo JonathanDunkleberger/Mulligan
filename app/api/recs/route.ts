@@ -23,7 +23,8 @@ const EXCLUDED_BOOK_KEYWORDS = [
   "unofficial", "guide", "trivia", "facts", "notebook", 
   "boxed set", "box set", "collection", "bundle", "complete set", 
   "summary", "analysis", "study guide", "companion", "encyclopedia",
-  "journal", "sketchbook", "coloring book", "poster book", "sticker book"
+  "journal", "sketchbook", "coloring book", "poster book", "sticker book",
+  "untitled"
 ];
 
 function normalizeBookTitle(title: string): string {
@@ -241,6 +242,8 @@ export async function POST(req: NextRequest) {
         return item?.title?.toLowerCase().trim();
       }));
 
+      const seenAuthors = new Set<string>();
+
       for (const item of candidates) {
         if (results[cat].length >= 24) break;
         
@@ -271,6 +274,13 @@ export async function POST(req: NextRequest) {
           // 3. Normalized Title Deduplication (vs Current Results)
           const isResultDuplicate = results[cat].some(r => normalizeBookTitle(r.title || "") === norm);
           if (isResultDuplicate) continue;
+
+          // 4. Author Deduplication (One book per author per batch)
+          if (item.creators && item.creators.length > 0) {
+            const author = item.creators[0];
+            if (seenAuthors.has(author)) continue;
+            seenAuthors.add(author);
+          }
         }
 
         results[cat].push(item);
