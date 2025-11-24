@@ -438,6 +438,14 @@ export async function gbooksPopular(): Promise<MediaItem[]> {
     "The Lord of the Rings", "Twilight", "Fifty Shades of Grey"
   ];
 
+  // Keywords to filter out "meta-content" and bundles
+  const EXCLUDED_KEYWORDS = [
+    "unofficial", "guide", "trivia", "facts", "notebook", 
+    "boxed set", "box set", "collection", "bundle", "complete set", 
+    "summary", "analysis", "study guide", "companion", "encyclopedia",
+    "journal", "sketchbook", "coloring book", "poster book", "sticker book"
+  ];
+
   // Pick 4 random seeds to get a mix of 20 items (5 each)
   const seeds = POPULAR_SEEDS.sort(() => 0.5 - Math.random()).slice(0, 4);
   
@@ -446,14 +454,15 @@ export async function gbooksPopular(): Promise<MediaItem[]> {
     url.searchParams.set("q", seed); // Search directly for the popular term
     url.searchParams.set("langRestrict", "en");
     url.searchParams.set("printType", "books");
-    url.searchParams.set("maxResults", "5"); // Get top 5 matches for this seed
+    url.searchParams.set("maxResults", "20"); // Fetch more to allow filtering
     url.searchParams.set("orderBy", "relevance");
     url.searchParams.set("key", ENV.GOOGLE_BOOKS_API_KEY!);
     
     const res = await fetch(url, { cache: "force-cache" });
     if (!res.ok) return [];
     const json = await res.json();
-    return (json.items || []).map((b: any) => {
+    
+    const items = (json.items || []).map((b: any) => {
       const info = b.volumeInfo || {};
       const thumb = normalizeGBooksThumb(info.imageLinks?.thumbnail || info.imageLinks?.smallThumbnail);
       const year = info.publishedDate ? Number(String(info.publishedDate).slice(0, 4)) : undefined;
@@ -471,6 +480,18 @@ export async function gbooksPopular(): Promise<MediaItem[]> {
         rating: info.averageRating ? info.averageRating * 2 : undefined,
       } as MediaItem;
     });
+
+    // Filter out unwanted items
+    const filtered = items.filter((item: MediaItem) => {
+      const titleLower = item.title.toLowerCase();
+      // Check for excluded keywords
+      if (EXCLUDED_KEYWORDS.some(kw => titleLower.includes(kw))) return false;
+      // Filter out items with no image (often low quality)
+      if (!item.imageUrl) return false;
+      return true;
+    });
+
+    return filtered.slice(0, 5);
   });
 
   const results = await Promise.all(promises);
