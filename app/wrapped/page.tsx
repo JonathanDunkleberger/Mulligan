@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { getUserFavorites } from "@/actions/user-data";
+import { generateWrappedInsights } from "@/actions/wrapped";
+import type { WrappedInsights } from "@/actions/wrapped";
 import type { MediaItem } from "../_lib/schema";
 
 import MediaTile from "../_components/MediaTile";
