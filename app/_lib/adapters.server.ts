@@ -108,7 +108,8 @@ export async function tmdbSearch(query: string, category: "film" | "tv" | "anime
   const items: MediaItem[] = [];
   for (const r of res.results) {
     if (category === "anime") {
-       const isAnime = (r.origin_country || []).includes("JP") || (r.genre_ids || []).includes(16);
+       // Strict check: Must be Animation AND from Japan or China
+       const isAnime = (r.genre_ids || []).includes(16) && (r.origin_country || []).some((c: string) => ["JP", "CN"].includes(c));
        if (!isAnime) continue;
     }
     items.push(mapTmdbListItem(r, category));
@@ -126,7 +127,8 @@ export async function tmdbSearchAll(query: string): Promise<MediaItem[]> {
   if (movies?.results) arr.push(...movies.results.map((r: any) => mapTmdbListItem(r, "film")));
   if (tv?.results) {
     for (const r of tv.results) {
-      const isAnime = (r.origin_country || []).includes("JP") || (r.genre_ids || []).includes(16);
+      // Strict check: Must be Animation AND from Japan or China
+      const isAnime = (r.genre_ids || []).includes(16) && (r.origin_country || []).some((c: string) => ["JP", "CN"].includes(c));
       arr.push(mapTmdbListItem(r, isAnime ? "anime" : "tv"));
     }
   }
@@ -137,7 +139,13 @@ export async function tmdbPopular(): Promise<Record<"film" | "tv" | "anime", Med
   const [moviePop, tvPop, animeDiscover] = await Promise.all([
     tmdbFetch("/movie/popular", { page: "1" }),
     tmdbFetch("/tv/popular", { page: "1" }),
-    tmdbFetch("/discover/tv", { with_genres: "16", sort_by: "popularity.desc", page: "1" })
+    // Filter for Animation (16) AND Origin Country (Japan or China) to exclude Western cartoons
+    tmdbFetch("/discover/tv", { 
+      with_genres: "16", 
+      with_origin_country: "JP|CN", 
+      sort_by: "popularity.desc", 
+      page: "1" 
+    })
   ]);
   const film = (moviePop?.results || []).map((r: any) => mapTmdbListItem(r, "film")).slice(0, 20);
   const tv = (tvPop?.results || []).map((r: any) => mapTmdbListItem(r, "tv")).slice(0, 20);
@@ -329,7 +337,7 @@ export async function tmdbDiscover(category: "film" | "tv" | "anime", genreNames
 
   if (category === "anime") {
     params.with_genres = "16"; // Animation
-    params.with_keywords = "210024"; // Anime keyword often used, or just rely on Animation genre + JP origin
+    params.with_origin_country = "JP|CN"; // Strict origin check
   } else {
     if (genreIds.length > 0) params.with_genres = genreIds.join(",");
   }
@@ -341,7 +349,7 @@ export async function tmdbDiscover(category: "film" | "tv" | "anime", genreNames
   for (const r of res.results) {
     // For anime, double check origin country if possible, but TMDB discover is loose
     if (category === "anime") {
-       const isAnime = (r.origin_country || []).includes("JP") || (r.genre_ids || []).includes(16);
+       const isAnime = (r.genre_ids || []).includes(16) && (r.origin_country || []).some((c: string) => ["JP", "CN"].includes(c));
        if (!isAnime) continue;
     }
     items.push(mapTmdbListItem(r, category));
