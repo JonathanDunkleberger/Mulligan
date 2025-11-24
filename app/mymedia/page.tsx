@@ -1,17 +1,17 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import type { MediaItem } from "../_lib/schema";
 import MediaTile from "../_components/MediaTile";
+import DetailsModal from "../_components/DetailsModal";
 import { getUserFavorites } from "@/actions/user-data";
 import { removeFavorite } from "@/actions/remove-favorite";
 
 import Link from "next/link";
 
 export default function MyMediaPage() {
-  const router = useRouter();
   const [favorites, setFavorites] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
 
   useEffect(() => {
     async function loadFavorites() {
@@ -39,10 +39,6 @@ export default function MyMediaPage() {
     }
   };
 
-  const handleItemClick = (item: MediaItem) => {
-    router.push(`/detail/${item.source}/${item.category}/${item.sourceId}`);
-  };
-
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center gap-6 mb-6 ml-10">
@@ -60,12 +56,21 @@ export default function MyMediaPage() {
             <MediaTile 
               key={f.id} 
               item={f} 
-              onClick={() => handleItemClick(f)}
+              onClick={() => setSelectedItem(f)}
               isFavorited={true}
               onToggleFavorite={handleRemoveFavorite}
             />
           ))}
         </div>
+      )}
+
+      {selectedItem && (
+        <DetailsModal 
+          item={selectedItem} 
+          onClose={() => setSelectedItem(null)} 
+          isFavorited={true}
+          onToggleFavorite={handleRemoveFavorite}
+        />
       )}
     </div>
   );

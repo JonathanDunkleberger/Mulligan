@@ -6,6 +6,7 @@ import { Category, MediaItem } from "./_lib/schema";
 import { debounce } from "./_lib/debounce";
 import MediaCarousel from "./_components/MediaCarousel";
 import MediaTile from "./_components/MediaTile";
+import DetailsModal from "./_components/DetailsModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getUserFavoriteIds } from "@/actions/user-data";
@@ -24,11 +25,12 @@ export default function Page() {
   const [popular, setPopular] = useState<Record<Category, MediaItem[]>>({ film: [], game: [], anime: [], tv: [], book: [] });
   const [recs, setRecs] = useState<Record<Category, MediaItem[]>>({ film: [], game: [], anime: [], tv: [], book: [] });
   const [heroItem, setHeroItem] = useState<MediaItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
 
-  const handleItemClick = (item: MediaItem) => {
-    router.push(`/detail/${item.source}/${item.category}/${item.sourceId}`);
-  };
+  // const handleItemClick = (item: MediaItem) => {
+  //   router.push(`/detail/${item.source}/${item.category}/${item.sourceId}`);
+  // };
 
   useEffect(() => {
     async function loadData() {
@@ -219,7 +221,7 @@ export default function Page() {
                     <MediaTile
                       key={item.id}
                       item={item}
-                      onClick={() => handleItemClick(item)}
+                      onClick={() => setSelectedItem(item)}
                       isFavorited={likedIds.has(item.id)}
                       onToggleFavorite={() => handleToggleFavorite(item)}
                     />
@@ -235,7 +237,7 @@ export default function Page() {
                     </h3>
                     <MediaCarousel 
                       items={rail.items} 
-                      onSelect={handleItemClick} 
+                      onSelect={setSelectedItem} 
                       likedIds={likedIds}
                       onToggleFavorite={handleToggleFavorite}
                     />
@@ -246,6 +248,15 @@ export default function Page() {
           </section>
         </div>
       </main>
+
+      {selectedItem && (
+        <DetailsModal
+          item={selectedItem}
+          onClose={() => setSelectedItem(null)}
+          isFavorited={likedIds.has(selectedItem.id)}
+          onToggleFavorite={() => handleToggleFavorite(selectedItem)}
+        />
+      )}
     </>
   );
 }
