@@ -39,7 +39,6 @@ export default function MyMediaPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">My Media</h1>
       
       {loading ? (
         <div className="text-gray-500">Loading your favorites...</div>
