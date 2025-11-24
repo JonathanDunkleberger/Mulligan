@@ -171,12 +171,16 @@ export async function tmdbGetDetails(category: "film" | "tv" | "anime", id: stri
   }
 
   // 3. Watch Providers (US Flatrate)
-  const usProviders = res["watch/providers"]?.results?.US?.flatrate;
+  const usData = res["watch/providers"]?.results?.US;
+  const usProviders = usData?.flatrate;
+  const watchLink = usData?.link;
+  
   if (usProviders) {
     item.watchProviders = usProviders.map((p: any) => ({
       provider_id: p.provider_id,
       provider_name: p.provider_name,
-      logo_path: p.logo_path ? `https://image.tmdb.org/t/p/original${p.logo_path}` : undefined
+      logo_path: p.logo_path ? `https://image.tmdb.org/t/p/original${p.logo_path}` : undefined,
+      link: watchLink
     }));
   }
   

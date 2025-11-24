@@ -268,18 +268,33 @@ export default function DetailsModal({
                 <div className="bg-zinc-900/50 rounded-xl p-5 border border-white/5">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Where to Watch</h4>
                   <div className="flex flex-wrap gap-2">
-                    {item.watchProviders.map((provider) => (
-                      <div key={provider.provider_id} className="relative w-10 h-10 rounded-md overflow-hidden shadow-lg tooltip-trigger group">
-                        {provider.logo_path ? (
-                          <Image src={provider.logo_path} alt={provider.provider_name} fill className="object-cover" />
-                        ) : (
-                          <div className="w-full h-full bg-gray-700" />
-                        )}
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black text-[10px] rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-opacity">
-                          {provider.provider_name}
+                    {item.watchProviders.map((provider) => {
+                      const content = (
+                        <div className="relative w-10 h-10 rounded-md overflow-hidden shadow-lg tooltip-trigger group cursor-pointer hover:scale-110 transition-transform">
+                          {provider.logo_path ? (
+                            <Image src={provider.logo_path} alt={provider.provider_name} fill className="object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-gray-700" />
+                          )}
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black text-[10px] rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-opacity z-50">
+                            {provider.provider_name}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+
+                      return provider.link ? (
+                        <a 
+                          key={provider.provider_id} 
+                          href={provider.link} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                        >
+                          {content}
+                        </a>
+                      ) : (
+                        <div key={provider.provider_id}>{content}</div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
