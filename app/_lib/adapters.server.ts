@@ -45,6 +45,48 @@ async function tmdbFetch(path: string, params: Record<string, string> = {}) {
   return res.json();
 }
 
+/* -------------------- External Ratings Helpers -------------------- */
+
+async function omdbFetch(imdbId: string) {
+  if (!ENV.OMDB_API_KEY) return null;
+  const url = `http://www.omdbapi.com/?apikey=${ENV.OMDB_API_KEY}&i=${imdbId}&tomatoes=true`;
+  try {
+    const res = await fetch(url, { next: { revalidate: 3600 } });
+    if (!res.ok) return null;
+    return res.json();
+  } catch (e) {
+    return null;
+  }
+}
+
+async function jikanFetch(title: string) {
+  // Jikan is free, no key needed. Rate limited to 3 requests/second.
+  // We search for the anime by title.
+  const url = `https://api.jikan.moe/v4/anime?q=${encodeURIComponent(title)}&limit=1`;
+  try {
+    // Add a small delay to be nice to Jikan if we were looping, but for single details it's fine.
+    const res = await fetch(url, { next: { revalidate: 3600 } });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.data?.[0] || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function steamFetch(appId: string) {
+  // Steam Store API is public.
+  const url = `https://store.steampowered.com/api/appdetails?appids=${appId}`;
+  try {
+    const res = await fetch(url, { next: { revalidate: 3600 } });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json[appId]?.data || null;
+  } catch (e) {
+    return null;
+  }
+}
+
 function mapTmdbListItem(it: any, category: Category): MediaItem {
   const title = it.title || it.name || "Untitled";
   const date = it.release_date || it.first_air_date;
@@ -67,8 +109,8 @@ export async function tmdbGetDetails(category: "film" | "tv" | "anime", id: stri
   if (!ENV.TMDB_API_KEY) return null;
   const type = category === "film" ? "movie" : "tv";
   
-  // Append extra details: credits, videos, watch providers, content ratings, keywords
-  const append = "credits,videos,watch/providers,content_ratings,release_dates,keywords";
+  // Append extra details: credits, videos, watch providers, content ratings, keywords, external_ids
+  const append = "credits,videos,watch/providers,content_ratings,release_dates,keywords,external_ids";
   const res = await tmdbFetch(`/${type}/${id}`, { append_to_response: append });
   if (!res) return null;
   
@@ -148,6 +190,28 @@ export async function tmdbGetDetails(category: "film" | "tv" | "anime", id: stri
       title: v.name,
       thumbnail: `https://i.ytimg.com/vi/${v.key}/hqdefault.jpg`
     }));
+  }
+
+  // 5. External Ratings (OMDb & Jikan)
+  const imdbId = res.external_ids?.imdb_id;
+  if (imdbId) {
+    const omdb = await omdbFetch(imdbId);
+    if (omdb) {
+      item.imdbRating = omdb.imdbRating;
+      item.metacriticRating = omdb.Metascore !== "N/A" ? `${omdb.Metascore}/100` : undefined;
+      const rt = omdb.Ratings?.find((r: any) => r.Source === "Rotten Tomatoes");
+      if (rt) item.rottenTomatoesRating = rt.Value;
+    }
+  }
+
+  if (category === "anime") {
+    // Try to find MAL score via Jikan
+    // We use the English title or original title
+    const searchTitle = item.title; 
+    const malData = await jikanFetch(searchTitle);
+    if (malData) {
+      item.malScore = malData.score;
+    }
   }
   
   return item;
@@ -361,9 +425,26 @@ export async function igdbGetDetails(id: string): Promise<MediaItem | null> {
       category: String(w.category), // IGDB uses enums, but string is fine for now
       url: w.url
     })),
-    // We can map DLCs/Expansions to "Seasons" or just list them in summary later if needed
-    // For now, let's just keep them in mind.
   };
+
+  // 5. External Ratings (Steam)
+  // Category 13 = Steam
+  const steamUrl = item.websites?.find(w => w.category === "13")?.url;
+  if (steamUrl) {
+    // Extract App ID: https://store.steampowered.com/app/12345/Name/
+    const match = steamUrl.match(/\/app\/(\d+)/);
+    if (match && match[1]) {
+      const steamData = await steamFetch(match[1]);
+      if (steamData) {
+        // Steam doesn't give a simple "9/10", but gives "metacritic" and "recommendations"
+        if (steamData.metacritic) {
+          item.metacriticRating = `${steamData.metacritic.score}/100`;
+        }
+        // We can infer a "Steam Rating" from recommendations if we want, or just use Metacritic
+        // For now, let's just use Metacritic if available from Steam
+      }
+    }
+  }
   
   return item;
 }

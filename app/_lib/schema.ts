@@ -51,6 +51,13 @@ export type MediaItem = {
   watchProviders?: WatchProvider[];
   contentRating?: string; // "PG-13", "TV-MA"
   
+  // External Ratings
+  imdbRating?: string;          // "8.5/10"
+  rottenTomatoesRating?: string; // "95%"
+  metacriticRating?: string;    // "88/100"
+  malScore?: number;            // 8.75
+  steamRating?: string;         // "Overwhelmingly Positive"
+  
   // Game Specific
   platforms?: string[];
   developer?: string;

@@ -313,6 +313,39 @@ export default async function DetailPage({ params }: PageProps) {
               </div>
             )}
 
+            {/* Ratings */}
+            {(item.imdbRating || item.rottenTomatoesRating || item.metacriticRating || item.malScore) && (
+              <div className="bg-zinc-900/50 rounded-2xl p-6 border border-white/5">
+                <h4 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4">Ratings</h4>
+                <div className="space-y-3">
+                  {item.imdbRating && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-300">IMDb</span>
+                      <span className="font-bold text-yellow-400">{item.imdbRating}</span>
+                    </div>
+                  )}
+                  {item.rottenTomatoesRating && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-300">Rotten Tomatoes</span>
+                      <span className="font-bold text-red-400">{item.rottenTomatoesRating}</span>
+                    </div>
+                  )}
+                  {item.metacriticRating && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-300">Metacritic</span>
+                      <span className="font-bold text-green-400">{item.metacriticRating}</span>
+                    </div>
+                  )}
+                  {item.malScore && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-300">MyAnimeList</span>
+                      <span className="font-bold text-blue-400">{item.malScore}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Information Grid */}
             <div className="bg-zinc-900/50 rounded-2xl p-6 border border-white/5 space-y-6">
               <h4 className="text-sm font-bold uppercase tracking-wider text-gray-400">Information</h4>
