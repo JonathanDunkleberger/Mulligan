@@ -17,19 +17,15 @@ export default function MediaTile({
   onToggleFavorite?: (item: MediaItem) => void;
   showAddHint?: boolean;
 }) {
-  const isPortrait = item.category === "book" || item.category === "game";
-  const aspectRatio = isPortrait ? "aspect-[2/3]" : "aspect-video";
-  const imageSrc = (isPortrait ? item.imageUrl : item.backdropUrl) || item.imageUrl || item.backdropUrl;
-
   return (
     <div 
-      className="tile group cursor-pointer relative transition-all duration-300 hover:scale-110 hover:z-50 origin-center"
+      className="tile group cursor-pointer relative transition-all duration-300 hover:scale-125 hover:z-50 origin-center"
       onClick={onClick}
     >
-      <div className={`${aspectRatio} relative overflow-hidden rounded-md bg-[#222]`}>
-        {imageSrc ? (
+      <div className="aspect-video relative overflow-hidden rounded-md bg-[#222]">
+        {item.imageUrl || item.backdropUrl ? (
           <Image 
-            src={imageSrc} 
+            src={item.backdropUrl || item.imageUrl!} 
             alt={item.title} 
             fill
             className="object-cover"
