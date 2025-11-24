@@ -18,6 +18,22 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Keywords to filter out "meta-content" and bundles (Same as in adapters)
+const EXCLUDED_BOOK_KEYWORDS = [
+  "unofficial", "guide", "trivia", "facts", "notebook", 
+  "boxed set", "box set", "collection", "bundle", "complete set", 
+  "summary", "analysis", "study guide", "companion", "encyclopedia",
+  "journal", "sketchbook", "coloring book", "poster book", "sticker book"
+];
+
+function normalizeBookTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/\(.*\)/g, "") // Remove parentheticals like (2024 Edition)
+    .replace(/[:\-].*$/, "") // Remove subtitles
+    .trim();
+}
+
 // Helper to calculate vector mean
 function calculateMeanVector(embeddings: number[][]): number[] {
   if (embeddings.length === 0) return [];
@@ -239,6 +255,23 @@ export async function POST(req: NextRequest) {
 
         // Deduplicate within results (Title check) - Prevents multiple editions of same book
         if (item.title && results[cat].some(r => r.title?.toLowerCase().trim() === item.title?.toLowerCase().trim())) continue;
+
+        // Aggressive Book Filtering
+        if (cat === 'book' && item.title) {
+          const lowerTitle = item.title.toLowerCase();
+          
+          // 1. Keyword Blocklist
+          if (EXCLUDED_BOOK_KEYWORDS.some(kw => lowerTitle.includes(kw))) continue;
+
+          // 2. Normalized Title Deduplication (vs Favorites)
+          const norm = normalizeBookTitle(item.title);
+          const isFavDuplicate = Array.from(favoritedTitles).some(ft => normalizeBookTitle(ft) === norm);
+          if (isFavDuplicate) continue;
+
+          // 3. Normalized Title Deduplication (vs Current Results)
+          const isResultDuplicate = results[cat].some(r => normalizeBookTitle(r.title || "") === norm);
+          if (isResultDuplicate) continue;
+        }
 
         results[cat].push(item);
       }

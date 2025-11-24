@@ -331,8 +331,9 @@ export async function igdbGetSimilar(id: string): Promise<MediaItem[]> {
   if (!numericId) return [];
 
   // Fetch the game's similar_games field
+  // Added screenshots.image_id to the query
   const q = `
-    fields similar_games.id, similar_games.name, similar_games.first_release_date, similar_games.cover.image_id, similar_games.genres.name, similar_games.summary, similar_games.rating, similar_games.involved_companies.company.name, similar_games.involved_companies.developer;
+    fields similar_games.id, similar_games.name, similar_games.first_release_date, similar_games.cover.image_id, similar_games.genres.name, similar_games.summary, similar_games.rating, similar_games.involved_companies.company.name, similar_games.involved_companies.developer, similar_games.screenshots.image_id;
     where id = ${numericId};
   `;
   const rows = await igdbQuery("games", q);
@@ -346,7 +347,7 @@ export async function igdbGetSimilar(id: string): Promise<MediaItem[]> {
     title: g.name,
     year: g.first_release_date ? new Date(g.first_release_date * 1000).getUTCFullYear() : undefined,
     imageUrl: g.cover?.image_id ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${g.cover.image_id}.jpg` : undefined,
-    backdropUrl: undefined, // similar_games expansion usually doesn't include screenshots to save bandwidth, can be added if needed
+    backdropUrl: g.screenshots?.[0]?.image_id ? `https://images.igdb.com/igdb/image/upload/t_screenshot_big/${g.screenshots[0].image_id}.jpg` : undefined,
     genres: (g.genres || []).map((x: any) => x.name),
     summary: g.summary,
     rating: g.rating ? g.rating / 10 : undefined,
