@@ -99,17 +99,17 @@ export default function WrappedPage() {
 
             {/* Fun Fact & Era */}
             <div className="space-y-6">
-              <div className="bg-white/5 p-6 rounded-3xl border border-white/10">
-                <h3 className="text-gray-400 font-medium uppercase tracking-wider text-sm mb-2">Did You Know?</h3>
-                <p className="text-lg text-white font-medium">
+              <div className="bg-emerald-900/20 p-6 rounded-3xl border border-emerald-500/20">
+                <h3 className="text-emerald-400 font-medium uppercase tracking-wider text-sm mb-2">Did You Know?</h3>
+                <p className="text-lg text-emerald-100 font-medium">
                   {insights.funFact}
                 </p>
               </div>
               
-              <div className="bg-white/5 p-6 rounded-3xl border border-white/10 flex items-center justify-between">
+              <div className="bg-amber-900/20 p-6 rounded-3xl border border-amber-500/20 flex items-center justify-between">
                 <div>
-                  <h3 className="text-gray-400 font-medium uppercase tracking-wider text-sm mb-1">Golden Era</h3>
-                  <p className="text-2xl text-white font-bold">{insights.topEra}</p>
+                  <h3 className="text-amber-400 font-medium uppercase tracking-wider text-sm mb-1">Golden Era</h3>
+                  <p className="text-2xl text-amber-100 font-bold">{insights.topEra}</p>
                 </div>
                 <div className="text-4xl opacity-50">⏳</div>
               </div>
