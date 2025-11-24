@@ -178,6 +178,15 @@ export async function tmdbGetRecommendations(id: string, category: "film" | "tv"
 
 /* -------------------- IGDB via Twitch -------------------- */
 let _token: { value: string; expires: number } | null = null;
+
+function normalizeGameTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/:\s*.*$/, "") // Remove subtitles (e.g. "Batman: Arkham City" -> "batman")
+    .replace(/\s+(?:part\s+)?(?:\d+|i{1,3}|iv|v|vi{0,3}|ix|x|xi{0,3}|xiv|xv|xvi{0,3}|xix|xx)$/i, "") // Remove numbers/roman numerals
+    .trim();
+}
+
 async function getTwitchToken() {
   if (!ENV.TWITCH_CLIENT_ID || !ENV.TWITCH_CLIENT_SECRET) return null;
   const now = Date.now();
@@ -266,21 +275,34 @@ export async function igdbPopular(): Promise<MediaItem[]> {
     fields id, name, first_release_date, cover.image_id, genres.name, rating_count, summary, rating, involved_companies.company.name, involved_companies.developer, screenshots.image_id, collection.name;
     where rating_count != null & rating_count > 100;
     sort rating_count desc;
-    limit 50;
+    limit 100;
   `;
   const rows = await igdbQuery("games", q);
   
-  const seenCollections = new Set<string>();
+  const seenKeys = new Set<string>();
   const items: MediaItem[] = [];
 
   for (const g of (rows || [])) {
-    // If it belongs to a collection, check if we've seen it
+    const keys: string[] = [];
+    
+    // Key 1: Collection Name (if available)
     if (g.collection?.name) {
-      if (seenCollections.has(g.collection.name)) {
-        continue; // Skip this game as we already have a popular entry from this series
-      }
-      seenCollections.add(g.collection.name);
+      keys.push(`collection:${g.collection.name.toLowerCase()}`);
     }
+    
+    // Key 2: Normalized Title (fallback for games without collection or loose matches)
+    const normTitle = normalizeGameTitle(g.name);
+    keys.push(`title:${normTitle}`);
+
+    // Check if any key has been seen
+    const isDuplicate = keys.some(k => seenKeys.has(k));
+    
+    if (isDuplicate) {
+      continue;
+    }
+
+    // Mark all keys as seen
+    keys.forEach(k => seenKeys.add(k));
     
     items.push({
       id: `igdb:game:${g.id}`,
@@ -296,9 +318,11 @@ export async function igdbPopular(): Promise<MediaItem[]> {
       rating: g.rating ? g.rating / 10 : undefined,
       creators: g.involved_companies?.filter((c: any) => c.developer).map((c: any) => c.company.name),
     });
+
+    if (items.length >= 20) break;
   }
 
-  return items.slice(0, 20);
+  return items;
 }
 
 export async function igdbGetSimilar(id: string): Promise<MediaItem[]> {
