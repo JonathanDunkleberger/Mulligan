@@ -66,15 +66,79 @@ function mapTmdbListItem(it: any, category: Category): MediaItem {
 export async function tmdbGetDetails(category: "film" | "tv" | "anime", id: string): Promise<MediaItem | null> {
   if (!ENV.TMDB_API_KEY) return null;
   const type = category === "film" ? "movie" : "tv";
-  const res = await tmdbFetch(`/${type}/${id}`, { append_to_response: "credits,videos" });
+  
+  // Append extra details: credits, videos, watch providers, content ratings, keywords
+  const append = "credits,videos,watch/providers,content_ratings,release_dates,keywords";
+  const res = await tmdbFetch(`/${type}/${id}`, { append_to_response: append });
   if (!res) return null;
   
   const item = mapTmdbListItem(res, category);
-  // Enrich with details
+  
+  // 1. Basic Enrichment
   item.genres = (res.genres || []).map((g: any) => g.name);
   item.status = res.status;
+  item.tagline = res.tagline;
   
-  // Map videos (prioritize trailers)
+  // 2. Cast & Crew
+  if (res.credits?.cast) {
+    item.cast = res.credits.cast.slice(0, 12).map((c: any) => ({
+      id: String(c.id),
+      name: c.name,
+      character: c.character,
+      imageUrl: c.profile_path ? `https://image.tmdb.org/t/p/w185${c.profile_path}` : undefined
+    }));
+  }
+
+  if (category === "film") {
+    item.runtime = res.runtime ? `${res.runtime}m` : undefined;
+    const director = res.credits?.crew?.find((c: any) => c.job === "Director")?.name;
+    if (director) item.creators = [director];
+    
+    // Content Rating (US)
+    const usRelease = res.release_dates?.results?.find((r: any) => r.iso_3166_1 === "US");
+    if (usRelease) {
+      const cert = usRelease.release_dates?.find((d: any) => d.certification)?.certification;
+      if (cert) item.contentRating = cert;
+    }
+  } else {
+    // TV/Anime Specifics
+    item.runtime = res.episode_run_time?.[0] ? `${res.episode_run_time[0]}m` : undefined;
+    if (!item.runtime && res.number_of_episodes) item.runtime = `${res.number_of_episodes} eps`;
+    
+    const creator = res.created_by?.map((c: any) => c.name);
+    if (creator?.length) item.creators = creator;
+
+    // Seasons
+    if (res.seasons) {
+      item.seasons = res.seasons
+        .filter((s: any) => s.season_number > 0) // Skip "Specials" (Season 0) usually
+        .map((s: any) => ({
+          id: String(s.id),
+          name: s.name,
+          season_number: s.season_number,
+          episode_count: s.episode_count,
+          air_date: s.air_date,
+          poster_path: s.poster_path ? `https://image.tmdb.org/t/p/w300${s.poster_path}` : undefined,
+          overview: s.overview
+        }));
+    }
+
+    // Content Rating (TV)
+    const rating = res.content_ratings?.results?.find((r: any) => r.iso_3166_1 === "US")?.rating;
+    if (rating) item.contentRating = rating;
+  }
+
+  // 3. Watch Providers (US Flatrate)
+  const usProviders = res["watch/providers"]?.results?.US?.flatrate;
+  if (usProviders) {
+    item.watchProviders = usProviders.map((p: any) => ({
+      provider_id: p.provider_id,
+      provider_name: p.provider_name,
+      logo_path: p.logo_path ? `https://image.tmdb.org/t/p/original${p.logo_path}` : undefined
+    }));
+  }
+  
+  // 4. Videos
   if (res.videos?.results) {
     const vids = res.videos.results.filter((v: any) => v.site === "YouTube");
     const trailers = vids.filter((v: any) => v.type === "Trailer");
@@ -86,15 +150,6 @@ export async function tmdbGetDetails(category: "film" | "tv" | "anime", id: stri
     }));
   }
   
-  if (category === "film") {
-    item.runtime = res.runtime ? `${res.runtime}m` : undefined;
-    const director = res.credits?.crew?.find((c: any) => c.job === "Director")?.name;
-    if (director) item.creators = [director];
-  } else {
-    item.runtime = res.number_of_episodes ? `${res.number_of_episodes} eps` : undefined;
-    const creator = res.created_by?.map((c: any) => c.name);
-    if (creator?.length) item.creators = creator;
-  }
   return item;
 }
 
@@ -262,15 +317,24 @@ export async function igdbSearch(query: string): Promise<MediaItem[]> {
 
 export async function igdbGetDetails(id: string): Promise<MediaItem | null> {
   if (!ENV.TWITCH_CLIENT_ID || !ENV.TWITCH_CLIENT_SECRET) return null;
+  
+  // Expanded query for "Mega Detail"
   const q = `
-    fields name, first_release_date, cover.image_id, screenshots.image_id, genres.name, summary, rating, involved_companies.company.name, involved_companies.developer, videos.video_id, videos.name;
+    fields 
+      name, first_release_date, cover.image_id, screenshots.image_id, genres.name, summary, rating, 
+      involved_companies.company.name, involved_companies.developer, involved_companies.publisher,
+      videos.video_id, videos.name,
+      platforms.name, websites.url, websites.category,
+      dlcs.name, expansions.name,
+      game_modes.name, themes.name;
     where id = ${id};
   `;
+  
   const rows = await igdbQuery("games", q);
   if (!rows || !rows.length) return null;
   const g = rows[0];
   
-  return {
+  const item: MediaItem = {
     id: `igdb:game:${g.id}`,
     source: "igdb",
     sourceId: String(g.id),
@@ -288,7 +352,20 @@ export async function igdbGetDetails(id: string): Promise<MediaItem | null> {
       title: v.name || "Gameplay Video",
       thumbnail: `https://i.ytimg.com/vi/${v.video_id}/hqdefault.jpg`
     })),
+    
+    // New Fields
+    platforms: (g.platforms || []).map((p: any) => p.name),
+    developer: g.involved_companies?.find((c: any) => c.developer)?.company?.name,
+    publisher: g.involved_companies?.find((c: any) => c.publisher)?.company?.name,
+    websites: (g.websites || []).map((w: any) => ({
+      category: String(w.category), // IGDB uses enums, but string is fine for now
+      url: w.url
+    })),
+    // We can map DLCs/Expansions to "Seasons" or just list them in summary later if needed
+    // For now, let's just keep them in mind.
   };
+  
+  return item;
 }
 
 export async function igdbPopular(): Promise<MediaItem[]> {
@@ -712,5 +789,11 @@ export async function gbooksGetDetails(id: string): Promise<MediaItem | null> {
     rating: info.averageRating ? info.averageRating * 2 : undefined,
     creators: info.authors,
     runtime: info.pageCount ? `${info.pageCount} p` : undefined,
+    
+    // New Fields
+    pageCount: info.pageCount,
+    publisherName: info.publisher,
+    previewLink: info.previewLink,
+    isbn: info.industryIdentifiers?.find((i: any) => i.type === "ISBN_13")?.identifier
   };
 }
