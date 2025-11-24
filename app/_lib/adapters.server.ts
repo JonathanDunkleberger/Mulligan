@@ -136,20 +136,41 @@ export async function tmdbSearchAll(query: string): Promise<MediaItem[]> {
 }
 
 export async function tmdbPopular(): Promise<Record<"film" | "tv" | "anime", MediaItem[]>> {
-  const [moviePop, tvPop, animeDiscover] = await Promise.all([
+  const [moviePop1, moviePop2, tvPop1, tvPop2, animePop1, animePop2] = await Promise.all([
     tmdbFetch("/movie/popular", { page: "1" }),
+    tmdbFetch("/movie/popular", { page: "2" }),
     tmdbFetch("/tv/popular", { page: "1" }),
+    tmdbFetch("/tv/popular", { page: "2" }),
     // Filter for Animation (16) AND Origin Country (Japan or China) to exclude Western cartoons
     tmdbFetch("/discover/tv", { 
       with_genres: "16", 
       with_origin_country: "JP|CN", 
       sort_by: "popularity.desc", 
       page: "1" 
+    }),
+    tmdbFetch("/discover/tv", { 
+      with_genres: "16", 
+      with_origin_country: "JP|CN", 
+      sort_by: "popularity.desc", 
+      page: "2" 
     })
   ]);
-  const film = (moviePop?.results || []).map((r: any) => mapTmdbListItem(r, "film")).slice(0, 24);
-  const tv = (tvPop?.results || []).map((r: any) => mapTmdbListItem(r, "tv")).slice(0, 24);
-  const anime = (animeDiscover?.results || []).map((r: any) => mapTmdbListItem(r, "anime")).slice(0, 24);
+
+  const film = [
+    ...(moviePop1?.results || []),
+    ...(moviePop2?.results || [])
+  ].map((r: any) => mapTmdbListItem(r, "film")).slice(0, 24);
+
+  const tv = [
+    ...(tvPop1?.results || []),
+    ...(tvPop2?.results || [])
+  ].map((r: any) => mapTmdbListItem(r, "tv")).slice(0, 24);
+
+  const anime = [
+    ...(animePop1?.results || []),
+    ...(animePop2?.results || [])
+  ].map((r: any) => mapTmdbListItem(r, "anime")).slice(0, 24);
+
   return { film, tv, anime };
 }
 
@@ -383,11 +404,18 @@ export async function tmdbDiscover(category: "film" | "tv" | "anime", genreNames
     if (genreIds.length > 0) params.with_genres = genreIds.join(",");
   }
 
-  const res = await tmdbFetch(`/discover/${type}`, params);
-  if (!res || !res.results) return [];
+  const [res1, res2] = await Promise.all([
+    tmdbFetch(`/discover/${type}`, { ...params, page: "1" }),
+    tmdbFetch(`/discover/${type}`, { ...params, page: "2" })
+  ]);
+
+  const allResults = [
+    ...(res1?.results || []),
+    ...(res2?.results || [])
+  ];
 
   const items: MediaItem[] = [];
-  for (const r of res.results) {
+  for (const r of allResults) {
     // For anime, double check origin country if possible, but TMDB discover is loose
     if (category === "anime") {
        const isAnime = (r.genre_ids || []).includes(16) && (r.origin_country || []).some((c: string) => ["JP", "CN"].includes(c));
@@ -396,7 +424,7 @@ export async function tmdbDiscover(category: "film" | "tv" | "anime", genreNames
     items.push(mapTmdbListItem(r, category));
   }
   
-  return items.slice(0, 20);
+  return items.slice(0, 24);
 }
 
 export async function igdbDiscover(genreNames: string[]): Promise<MediaItem[]> {
@@ -417,7 +445,7 @@ export async function igdbDiscover(genreNames: string[]): Promise<MediaItem[]> {
     fields id, name, first_release_date, cover.image_id, genres.name, summary, rating, involved_companies.company.name, involved_companies.developer, screenshots.image_id;
     where genres.name = (${genreList}) & rating > 70 & rating_count > 20;
     sort rating_count desc;
-    limit 20;
+    limit 50;
   `;
   
   const rows = await igdbQuery("games", q);
@@ -434,7 +462,7 @@ export async function igdbDiscover(genreNames: string[]): Promise<MediaItem[]> {
     summary: g.summary,
     rating: g.rating ? g.rating / 10 : undefined,
     creators: g.involved_companies?.filter((c: any) => c.developer).map((c: any) => c.company.name),
-  }));
+  })).slice(0, 24);
 }
 
 /* -------------------- Google Books -------------------- */
@@ -449,7 +477,7 @@ export async function gbooksSearch(query: string): Promise<MediaItem[]> {
   if (!ENV.GOOGLE_BOOKS_API_KEY) return [];
   const url = new URL("https://www.googleapis.com/books/v1/volumes");
   url.searchParams.set("q", query);
-  url.searchParams.set("maxResults", "25");
+  url.searchParams.set("maxResults", "40");
   url.searchParams.set("key", ENV.GOOGLE_BOOKS_API_KEY);
   const res = await fetch(url, { cache: "force-cache" });
   if (!res.ok) return [];
@@ -633,7 +661,7 @@ export async function gbooksDiscover(genreNames: string[]): Promise<MediaItem[]>
   url.searchParams.set("q", `subject:${subject}`);
   url.searchParams.set("langRestrict", "en");
   url.searchParams.set("printType", "books");
-  url.searchParams.set("maxResults", "20");
+  url.searchParams.set("maxResults", "40");
   url.searchParams.set("orderBy", "relevance");
   url.searchParams.set("key", ENV.GOOGLE_BOOKS_API_KEY);
   

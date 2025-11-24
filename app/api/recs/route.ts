@@ -10,7 +10,10 @@ import {
   gbooksDiscover,
   tmdbSearch,
   igdbSearch,
-  gbooksSearch
+  gbooksSearch,
+  tmdbPopular,
+  igdbPopular,
+  gbooksPopular
 } from "../../_lib/adapters.server";
 import OpenAI from "openai";
 
@@ -244,46 +247,77 @@ export async function POST(req: NextRequest) {
 
       const seenAuthors = new Set<string>();
 
-      for (const item of candidates) {
-        if (results[cat].length >= 24) break;
-        
+      const isValidCandidate = (item: MediaItem) => {
+        // Image Check - Strict filter for quality (No text-only papers)
+        if (!item.imageUrl && !item.backdropUrl) return false;
+
         // Strict ID check
-        if (favoritedIds.has(item.id)) continue;
+        if (favoritedIds.has(item.id)) return false;
 
         // Strict Title check (fuzzy match backup)
-        if (item.title && favoritedTitles.has(item.title.toLowerCase().trim())) continue;
+        if (item.title && favoritedTitles.has(item.title.toLowerCase().trim())) return false;
         
         // Deduplicate within results (ID check)
-        if (results[cat].some(r => r.id === item.id)) continue;
+        if (results[cat].some(r => r.id === item.id)) return false;
 
-        // Deduplicate within results (Title check) - Prevents multiple editions of same book
-        if (item.title && results[cat].some(r => r.title?.toLowerCase().trim() === item.title?.toLowerCase().trim())) continue;
+        // Deduplicate within results (Title check)
+        if (item.title && results[cat].some(r => r.title?.toLowerCase().trim() === item.title?.toLowerCase().trim())) return false;
 
         // Aggressive Book Filtering
         if (cat === 'book' && item.title) {
           const lowerTitle = item.title.toLowerCase();
           
           // 1. Keyword Blocklist
-          if (EXCLUDED_BOOK_KEYWORDS.some(kw => lowerTitle.includes(kw))) continue;
+          if (EXCLUDED_BOOK_KEYWORDS.some(kw => lowerTitle.includes(kw))) return false;
 
           // 2. Normalized Title Deduplication (vs Favorites)
           const norm = normalizeBookTitle(item.title);
           const isFavDuplicate = Array.from(favoritedTitles).some(ft => normalizeBookTitle(ft) === norm);
-          if (isFavDuplicate) continue;
+          if (isFavDuplicate) return false;
 
           // 3. Normalized Title Deduplication (vs Current Results)
           const isResultDuplicate = results[cat].some(r => normalizeBookTitle(r.title || "") === norm);
-          if (isResultDuplicate) continue;
+          if (isResultDuplicate) return false;
 
           // 4. Author Deduplication (One book per author per batch)
           if (item.creators && item.creators.length > 0) {
             const author = item.creators[0];
-            if (seenAuthors.has(author)) continue;
-            seenAuthors.add(author);
+            if (seenAuthors.has(author)) return false;
           }
         }
+        return true;
+      };
 
-        results[cat].push(item);
+      // 1. Process LLM Candidates
+      for (const item of candidates) {
+        if (results[cat].length >= 24) break;
+        
+        if (isValidCandidate(item)) {
+          if (cat === 'book' && item.creators?.[0]) seenAuthors.add(item.creators[0]);
+          results[cat].push(item);
+        }
+      }
+
+      // 2. Backfill if needed (Ensure exactly 24 items)
+      if (results[cat].length < 24) {
+        console.log(`Backfilling ${cat}: needs ${24 - results[cat].length} more items`);
+        let popularItems: MediaItem[] = [];
+        try {
+          if (cat === 'game') popularItems = await igdbPopular();
+          else if (cat === 'book') popularItems = await gbooksPopular();
+          else {
+             const pop = await tmdbPopular();
+             popularItems = pop[cat];
+          }
+        } catch (e) { console.error("Backfill error", e); }
+
+        for (const item of popularItems) {
+           if (results[cat].length >= 24) break;
+           if (isValidCandidate(item)) {
+             if (cat === 'book' && item.creators?.[0]) seenAuthors.add(item.creators[0]);
+             results[cat].push(item);
+           }
+        }
       }
     }));
 
