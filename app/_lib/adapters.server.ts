@@ -427,78 +427,107 @@ export async function gbooksSearch(query: string): Promise<MediaItem[]> {
 export async function gbooksPopular(): Promise<MediaItem[]> {
   if (!ENV.GOOGLE_BOOKS_API_KEY) return [];
   
-  // Google Books API doesn't have a "popular" endpoint, so "subject:fiction" returns public domain classics.
-  // To serve "Whack-a-Mole" style popular hits (Harry Potter, King, etc.), we'll use a curated list of 
-  // mega-popular authors and series to seed the "Popular" section.
-  const POPULAR_SEEDS = [
-    "Harry Potter", "Game of Thrones", "Stephen King", "Brandon Sanderson", 
-    "J.R.R. Tolkien", "The Hunger Games", "Percy Jackson", "Agatha Christie", 
-    "Dan Brown", "Colleen Hoover", "Sarah J. Maas", "Dune", "The Witcher", 
-    "Neil Gaiman", "Haruki Murakami", "James Patterson", "John Grisham",
-    "The Lord of the Rings", "Twilight", "Fifty Shades of Grey"
+  // To ensure high-quality "Whack-a-Mole" targets, we use a curated list of specific
+  // highly-recognizable novels (classics + modern hits).
+  // We search for the specific title to avoid "Series Bundles", "Study Guides", etc.
+  const CURATED_BOOKS = [
+    "Harry Potter and the Sorcerer's Stone",
+    "A Game of Thrones",
+    "The Fellowship of the Ring",
+    "The Hunger Games",
+    "The Da Vinci Code",
+    "The Martian",
+    "Project Hail Mary",
+    "Dune",
+    "A Court of Thorns and Roses",
+    "Fourth Wing",
+    "It Ends with Us",
+    "The Seven Husbands of Evelyn Hugo",
+    "Lessons in Chemistry",
+    "Tomorrow, and Tomorrow, and Tomorrow",
+    "Gone Girl",
+    "The Girl with the Dragon Tattoo",
+    "1984",
+    "The Great Gatsby",
+    "To Kill a Mockingbird",
+    "Pride and Prejudice",
+    "The Catcher in the Rye",
+    "The Hobbit",
+    "Fahrenheit 451",
+    "Brave New World",
+    "The Handmaid's Tale",
+    "Ender's Game",
+    "The Hitchhiker's Guide to the Galaxy",
+    "Percy Jackson and the Lightning Thief",
+    "The Shining",
+    "It",
+    "Mistborn: The Final Empire",
+    "The Way of Kings",
+    "The Name of the Wind",
+    "Dark Matter",
+    "Ready Player One",
+    "Red Rising",
+    "The Silent Patient",
+    "Where the Crawdads Sing",
+    "Daisy Jones & The Six",
+    "Normal People",
+    "Iron Flame",
+    "Yellowface",
+    "Demon Copperhead",
+    "The Covenant of Water",
+    "Tom Lake"
   ];
 
-  // Keywords to filter out "meta-content" and bundles
-  const EXCLUDED_KEYWORDS = [
-    "unofficial", "guide", "trivia", "facts", "notebook", 
-    "boxed set", "box set", "collection", "bundle", "complete set", 
-    "summary", "analysis", "study guide", "companion", "encyclopedia",
-    "journal", "sketchbook", "coloring book", "poster book", "sticker book"
-  ];
-
-  // Pick 4 random seeds to get a mix of 20 items (5 each)
-  const seeds = POPULAR_SEEDS.sort(() => 0.5 - Math.random()).slice(0, 4);
+  // Pick 15 random titles to ensure variety on refresh
+  const selected = CURATED_BOOKS.sort(() => 0.5 - Math.random()).slice(0, 15);
   
-  const promises = seeds.map(async (seed) => {
+  const promises = selected.map(async (query) => {
     const url = new URL("https://www.googleapis.com/books/v1/volumes");
-    url.searchParams.set("q", seed); // Search directly for the popular term
+    url.searchParams.set("q", `intitle:"${query}"`); // Exact title search
     url.searchParams.set("langRestrict", "en");
     url.searchParams.set("printType", "books");
-    url.searchParams.set("maxResults", "20"); // Fetch more to allow filtering
+    url.searchParams.set("maxResults", "3"); // Fetch top 3 to pick the best edition
     url.searchParams.set("orderBy", "relevance");
     url.searchParams.set("key", ENV.GOOGLE_BOOKS_API_KEY!);
     
     const res = await fetch(url, { cache: "force-cache" });
-    if (!res.ok) return [];
+    if (!res.ok) return null;
     const json = await res.json();
     
-    const items = (json.items || []).map((b: any) => {
-      const info = b.volumeInfo || {};
-      const thumb = normalizeGBooksThumb(info.imageLinks?.thumbnail || info.imageLinks?.smallThumbnail);
-      const year = info.publishedDate ? Number(String(info.publishedDate).slice(0, 4)) : undefined;
-      return {
-        id: `gbooks:book:${b.id}`,
-        source: "gbooks" as const,
-        sourceId: b.id,
-        category: "book" as const,
-        title: info.title || "Untitled",
-        year,
-        imageUrl: thumb,
-        genres: info.categories || [],
-        summary: info.description,
-        creators: info.authors,
-        rating: info.averageRating ? info.averageRating * 2 : undefined,
-      } as MediaItem;
-    });
+    if (!json.items || json.items.length === 0) return null;
 
-    // Filter out unwanted items
-    const filtered = items.filter((item: MediaItem) => {
-      const titleLower = item.title.toLowerCase();
-      // Check for excluded keywords
-      if (EXCLUDED_KEYWORDS.some(kw => titleLower.includes(kw))) return false;
-      // Filter out items with no image (often low quality)
-      if (!item.imageUrl) return false;
-      return true;
-    });
+    // Sort by ratingsCount (popularity) to find the "main" edition vs obscure reprints
+    // If ratingsCount is missing, fall back to relevance (original order)
+    const bestMatch = json.items.sort((a: any, b: any) => {
+      const countA = a.volumeInfo.ratingsCount || 0;
+      const countB = b.volumeInfo.ratingsCount || 0;
+      return countB - countA;
+    })[0];
 
-    return filtered.slice(0, 5);
+    const info = bestMatch.volumeInfo || {};
+    const thumb = normalizeGBooksThumb(info.imageLinks?.thumbnail || info.imageLinks?.smallThumbnail);
+    
+    // Skip if no image (bad data)
+    if (!thumb) return null;
+
+    return {
+      id: `gbooks:book:${bestMatch.id}`,
+      source: "gbooks" as const,
+      sourceId: bestMatch.id,
+      category: "book" as const,
+      title: info.title || "Untitled",
+      year: info.publishedDate ? Number(String(info.publishedDate).slice(0, 4)) : undefined,
+      imageUrl: thumb,
+      genres: info.categories || [],
+      summary: info.description,
+      creators: info.authors,
+      rating: info.averageRating ? info.averageRating * 2 : undefined,
+    } as MediaItem;
   });
 
   const results = await Promise.all(promises);
-  const flatResults = results.flat();
-  
-  // Shuffle the final list so it doesn't look like blocks of authors
-  return flatResults.sort(() => 0.5 - Math.random());
+  // Filter out nulls
+  return results.filter((r): r is MediaItem => r !== null);
 }
 
 export async function gbooksGetSimilar(id: string): Promise<MediaItem[]> {
