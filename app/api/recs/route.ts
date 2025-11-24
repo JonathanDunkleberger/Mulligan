@@ -234,8 +234,11 @@ export async function POST(req: NextRequest) {
         // Strict Title check (fuzzy match backup)
         if (item.title && favoritedTitles.has(item.title.toLowerCase().trim())) continue;
         
-        // Deduplicate within results
+        // Deduplicate within results (ID check)
         if (results[cat].some(r => r.id === item.id)) continue;
+
+        // Deduplicate within results (Title check) - Prevents multiple editions of same book
+        if (item.title && results[cat].some(r => r.title?.toLowerCase().trim() === item.title?.toLowerCase().trim())) continue;
 
         results[cat].push(item);
       }
