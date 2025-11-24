@@ -219,7 +219,7 @@ export default function DetailsModal({
               {item.videos && item.videos.length > 0 && (
                 <div>
                   <h3 className="text-xl font-bold mb-4">Media</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     {item.videos.map((video) => (
                       <div key={video.id} className="space-y-2">
                         <div 
