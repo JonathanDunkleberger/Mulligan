@@ -95,7 +95,7 @@ export default function WrappedPage() {
 
             {/* Donut Chart & Legend */}
             <div className="flex items-center gap-8">
-              <div className="relative w-48 h-48 flex-shrink-0">
+              <div className="relative w-64 h-64 flex-shrink-0">
                 <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
                   {typeEntries.map(([label, count], i) => {
                     const percent = count / totalItems;
@@ -188,7 +188,7 @@ export default function WrappedPage() {
 
             {/* Fun Fact & Era */}
             <div className="space-y-6">
-              <div className="bg-emerald-900/20 p-6 rounded-3xl border border-emerald-500/20 h-full flex flex-col justify-center">
+              <div className="bg-emerald-900/20 p-6 rounded-3xl border border-emerald-500/20 flex flex-col justify-center">
                 <h3 className="text-emerald-400 font-medium uppercase tracking-wider text-sm mb-2">Did You Know?</h3>
                 <p className="text-lg text-emerald-100 font-medium leading-relaxed">
                   {insights.funFact}
