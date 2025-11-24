@@ -58,6 +58,11 @@ export default function WrappedPage() {
     .sort(([,a], [,b]) => b - a)
     .slice(0, 5);
 
+  // Chart Data Calculation
+  const typeEntries = Object.entries(types).sort(([,a], [,b]) => b - a);
+  const CHART_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6"];
+  let cumulativePercent = 0;
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center gap-6 mb-8 ml-10">
@@ -68,10 +73,8 @@ export default function WrappedPage() {
       {/* AI Insights Hero */}
       {insights && (
         <div className="mb-12 space-y-6">
-          <div className="bg-white/5 p-8 rounded-3xl border border-white/10 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-            
-            <div className="relative z-10">
+          <div className="bg-zinc-900 p-8 rounded-3xl border border-white/10 shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="relative z-10 flex-1">
               <p className="text-gray-400 font-medium tracking-widest text-sm uppercase mb-2">Your Media Aura</p>
               <h2 className="text-4xl md:text-6xl font-black text-white mb-6 leading-tight">
                 {insights.vibe}
@@ -79,6 +82,37 @@ export default function WrappedPage() {
               <p className="text-xl text-gray-200 max-w-3xl leading-relaxed">
                 {insights.summary}
               </p>
+            </div>
+
+            {/* Donut Chart */}
+            <div className="relative w-64 h-64 flex-shrink-0">
+              <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                {typeEntries.map(([label, count], i) => {
+                  const percent = count / totalItems;
+                  const dashArray = `${percent * 100} ${100 - percent * 100}`;
+                  const dashOffset = -cumulativePercent * 100;
+                  cumulativePercent += percent;
+                  
+                  return (
+                    <circle
+                      key={label}
+                      cx="50"
+                      cy="50"
+                      r="15.9155"
+                      fill="transparent"
+                      stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                      strokeWidth="8"
+                      strokeDasharray={dashArray}
+                      strokeDashoffset={dashOffset}
+                      className="transition-all duration-500 hover:opacity-80"
+                    />
+                  );
+                })}
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-3xl font-black text-white">{totalItems}</span>
+                <span className="text-xs text-gray-400 uppercase tracking-wider">Items</span>
+              </div>
             </div>
           </div>
 
