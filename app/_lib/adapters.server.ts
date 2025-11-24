@@ -147,9 +147,9 @@ export async function tmdbPopular(): Promise<Record<"film" | "tv" | "anime", Med
       page: "1" 
     })
   ]);
-  const film = (moviePop?.results || []).map((r: any) => mapTmdbListItem(r, "film")).slice(0, 20);
-  const tv = (tvPop?.results || []).map((r: any) => mapTmdbListItem(r, "tv")).slice(0, 20);
-  const anime = (animeDiscover?.results || []).map((r: any) => mapTmdbListItem(r, "anime")).slice(0, 20);
+  const film = (moviePop?.results || []).map((r: any) => mapTmdbListItem(r, "film")).slice(0, 24);
+  const tv = (tvPop?.results || []).map((r: any) => mapTmdbListItem(r, "tv")).slice(0, 24);
+  const anime = (animeDiscover?.results || []).map((r: any) => mapTmdbListItem(r, "anime")).slice(0, 24);
   return { film, tv, anime };
 }
 
@@ -173,7 +173,7 @@ export async function tmdbGetRecommendations(id: string, category: "film" | "tv"
     });
   }
 
-  return results.map((r: any) => mapTmdbListItem(r, category)).slice(0, 10);
+  return results.map((r: any) => mapTmdbListItem(r, category)).slice(0, 20);
 }
 
 /* -------------------- IGDB via Twitch -------------------- */
@@ -319,7 +319,7 @@ export async function igdbPopular(): Promise<MediaItem[]> {
       creators: g.involved_companies?.filter((c: any) => c.developer).map((c: any) => c.company.name),
     });
 
-    if (items.length >= 20) break;
+    if (items.length >= 24) break;
   }
 
   return items;
@@ -352,7 +352,7 @@ export async function igdbGetSimilar(id: string): Promise<MediaItem[]> {
     summary: g.summary,
     rating: g.rating ? g.rating / 10 : undefined,
     creators: g.involved_companies?.filter((c: any) => c.developer).map((c: any) => c.company.name),
-  })).slice(0, 10);
+  })).slice(0, 20);
 }
 
 
@@ -396,7 +396,7 @@ export async function tmdbDiscover(category: "film" | "tv" | "anime", genreNames
     items.push(mapTmdbListItem(r, category));
   }
   
-  return items.slice(0, 12);
+  return items.slice(0, 20);
 }
 
 export async function igdbDiscover(genreNames: string[]): Promise<MediaItem[]> {
@@ -417,7 +417,7 @@ export async function igdbDiscover(genreNames: string[]): Promise<MediaItem[]> {
     fields id, name, first_release_date, cover.image_id, genres.name, summary, rating, involved_companies.company.name, involved_companies.developer, screenshots.image_id;
     where genres.name = (${genreList}) & rating > 70 & rating_count > 20;
     sort rating_count desc;
-    limit 15;
+    limit 20;
   `;
   
   const rows = await igdbQuery("games", q);
@@ -527,8 +527,8 @@ export async function gbooksPopular(): Promise<MediaItem[]> {
     "Tom Lake"
   ];
 
-  // Pick 15 random titles to ensure variety on refresh
-  const selected = CURATED_BOOKS.sort(() => 0.5 - Math.random()).slice(0, 15);
+  // Pick 24 random titles to ensure variety on refresh
+  const selected = CURATED_BOOKS.sort(() => 0.5 - Math.random()).slice(0, 24);
   
   const promises = selected.map(async (query) => {
     const url = new URL("https://www.googleapis.com/books/v1/volumes");
@@ -592,7 +592,7 @@ export async function gbooksGetSimilar(id: string): Promise<MediaItem[]> {
   url.searchParams.set("q", `inauthor:"${author}"`);
   url.searchParams.set("langRestrict", "en");
   url.searchParams.set("printType", "books");
-  url.searchParams.set("maxResults", "10");
+  url.searchParams.set("maxResults", "20");
   url.searchParams.set("orderBy", "relevance");
   if (ENV.GOOGLE_BOOKS_API_KEY) url.searchParams.set("key", ENV.GOOGLE_BOOKS_API_KEY);
   

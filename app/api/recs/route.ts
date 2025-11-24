@@ -158,15 +158,15 @@ export async function POST(req: NextRequest) {
         The user has liked these titles (entire history): ${favTitles}.
         
         Task:
-        1. Identify 4 specific titles that perfectly match the user's taste but are NOT in the list.
-           - 2 should be "Safe Bets" (highly acclaimed or cult classics similar to their likes).
-           - 2 should be "Hidden Gems" (lesser known but high quality matches).
+        1. Identify 6 specific titles that perfectly match the user's taste but are NOT in the list.
+           - 3 should be "Safe Bets" (highly acclaimed or cult classics similar to their likes).
+           - 3 should be "Hidden Gems" (lesser known but high quality matches).
            - IMPORTANT: Do NOT suggest titles by the same authors/creators as the user's favorites if possible. Focus on similar vibes, not just same creator.
         2. Identify 2 specific sub-genres or themes (e.g. "Cyberpunk", "Space Opera", "Cozy Mystery") that the user seems to like.
         
         Return ONLY a JSON object with this structure:
         {
-          "seeds": ["Safe Bet 1", "Safe Bet 2", "Hidden Gem 1", "Hidden Gem 2"],
+          "seeds": ["Safe Bet 1", "Safe Bet 2", "Safe Bet 3", "Hidden Gem 1", "Hidden Gem 2", "Hidden Gem 3"],
           "genres": ["Genre 1", "Genre 2"]
         }
       `;
