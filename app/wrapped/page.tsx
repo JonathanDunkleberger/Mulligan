@@ -95,7 +95,7 @@ export default function WrappedPage() {
 
             {/* Donut Chart & Legend */}
             <div className="flex items-center gap-8">
-              <div className="relative w-64 h-64 flex-shrink-0">
+              <div className="relative w-96 h-96 flex-shrink-0">
                 <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
                   {typeEntries.map(([label, count], i) => {
                     const percent = count / totalItems;
