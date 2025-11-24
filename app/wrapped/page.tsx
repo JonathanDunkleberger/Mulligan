@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { getUserFavorites } from "@/actions/user-data";
 import type { MediaItem } from "../_lib/schema";
 
-import Link from "next/link";
-import { generateWrappedInsights, type WrappedInsights } from "@/actions/wrapped";
+import MediaTile from "../_components/MediaTile";
 
 export default function WrappedPage() {
   const [favorites, setFavorites] = useState<MediaItem[]>([]);
@@ -18,8 +17,6 @@ export default function WrappedPage() {
         const items = await getUserFavorites();
         setFavorites(items);
         
-        // Generate insights in parallel or after? 
-        // Let's do it after to ensure we have data
         if (items.length >= 3) {
           const data = await generateWrappedInsights(items);
           setInsights(data);
@@ -46,12 +43,17 @@ export default function WrappedPage() {
   const totalItems = favorites.length;
   const genres: Record<string, number> = {};
   const types: Record<string, number> = {};
+  const years: Record<string, number> = {};
   
   favorites.forEach(f => {
     types[f.category] = (types[f.category] || 0) + 1;
     f.genres?.forEach(g => {
       genres[g] = (genres[g] || 0) + 1;
     });
+    if (f.year) {
+      const decade = Math.floor(f.year / 10) * 10;
+      years[decade] = (years[decade] || 0) + 1;
+    }
   });
 
   const topGenres = Object.entries(genres)
@@ -62,6 +64,10 @@ export default function WrappedPage() {
   const typeEntries = Object.entries(types).sort(([,a], [,b]) => b - a);
   const CHART_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6"];
   let cumulativePercent = 0;
+
+  // Timeline Data
+  const timelineEntries = Object.entries(years).sort(([a], [b]) => Number(a) - Number(b));
+  const maxYearCount = Math.max(...Object.values(years), 1);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -84,58 +90,104 @@ export default function WrappedPage() {
               </p>
             </div>
 
-            {/* Donut Chart */}
-            <div className="relative w-64 h-64 flex-shrink-0">
-              <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                {typeEntries.map(([label, count], i) => {
-                  const percent = count / totalItems;
-                  const dashArray = `${percent * 100} ${100 - percent * 100}`;
-                  const dashOffset = -cumulativePercent * 100;
-                  cumulativePercent += percent;
-                  
-                  return (
-                    <circle
-                      key={label}
-                      cx="50"
-                      cy="50"
-                      r="15.9155"
-                      fill="transparent"
-                      stroke={CHART_COLORS[i % CHART_COLORS.length]}
-                      strokeWidth="8"
-                      strokeDasharray={dashArray}
-                      strokeDashoffset={dashOffset}
-                      className="transition-all duration-500 hover:opacity-80"
+            {/* Donut Chart & Legend */}
+            <div className="flex items-center gap-8">
+              <div className="relative w-48 h-48 flex-shrink-0">
+                <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                  {typeEntries.map(([label, count], i) => {
+                    const percent = count / totalItems;
+                    const dashArray = `${percent * 100} ${100 - percent * 100}`;
+                    const dashOffset = -cumulativePercent * 100;
+                    cumulativePercent += percent;
+                    
+                    return (
+                      <circle
+                        key={label}
+                        cx="50"
+                        cy="50"
+                        r="15.9155"
+                        fill="transparent"
+                        stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                        strokeWidth="8"
+                        strokeDasharray={dashArray}
+                        strokeDashoffset={dashOffset}
+                        className="transition-all duration-500 hover:opacity-80"
+                      />
+                    );
+                  })}
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-2xl font-black text-white">{totalItems}</span>
+                  <span className="text-[10px] text-gray-400 uppercase tracking-wider">Items</span>
+                </div>
+              </div>
+              
+              {/* Legend */}
+              <div className="space-y-2">
+                {typeEntries.map(([label, count], i) => (
+                  <div key={label} className="flex items-center gap-2 text-sm">
+                    <div 
+                      className="w-3 h-3 rounded-full" 
+                      style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
                     />
-                  );
-                })}
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-3xl font-black text-white">{totalItems}</span>
-                <span className="text-xs text-gray-400 uppercase tracking-wider">Items</span>
+                    <span className="text-gray-300 capitalize">{label}</span>
+                    <span className="text-gray-500 text-xs">({Math.round((count/totalItems)*100)}%)</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
 
+          {/* Master Recs Grid */}
+          <div className="bg-white/5 p-8 rounded-3xl border border-white/10">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white">Curated For You</h3>
+              <span className="bg-primary/20 text-primary text-xs px-3 py-1 rounded-full">Top 5 Matches</span>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {insights.masterRecs.map((rec, i) => (
+                <div key={i} className="group relative">
+                  <div className="scale-90 origin-top-left transition-transform group-hover:scale-95">
+                    <MediaTile item={rec.item} />
+                  </div>
+                  <div className="mt-2">
+                    <p className="text-xs text-gray-400 line-clamp-3 leading-relaxed pl-1 border-l-2 border-primary/50">
+                      {rec.reason}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Master Rec Card */}
-            <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-primary/50 transition-colors group">
-              <div className="flex items-start justify-between mb-4">
-                <h3 className="text-gray-400 font-medium uppercase tracking-wider text-sm">The Master Recommendation</h3>
-                <span className="bg-primary/20 text-primary text-xs px-3 py-1 rounded-full">99% Match</span>
+            {/* Timeline Chart */}
+            <div className="bg-white/5 p-8 rounded-3xl border border-white/10">
+              <h3 className="text-gray-400 font-medium uppercase tracking-wider text-sm mb-6">Time Travel</h3>
+              <div className="flex items-end justify-between h-40 gap-2">
+                {timelineEntries.map(([decade, count]) => {
+                  const height = (count / maxYearCount) * 100;
+                  return (
+                    <div key={decade} className="flex flex-col items-center gap-2 flex-1 group">
+                      <div className="w-full bg-white/10 rounded-t-md relative overflow-hidden h-full">
+                        <div 
+                          className="absolute bottom-0 left-0 right-0 bg-indigo-500 transition-all duration-1000 group-hover:bg-indigo-400"
+                          style={{ height: `${height}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-500 font-mono">{decade}s</span>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="text-3xl font-bold text-white mb-3 group-hover:text-primary transition-colors">
-                {insights.masterRec.title}
-              </div>
-              <p className="text-gray-300 leading-relaxed">
-                {insights.masterRec.reason}
-              </p>
             </div>
 
             {/* Fun Fact & Era */}
             <div className="space-y-6">
-              <div className="bg-emerald-900/20 p-6 rounded-3xl border border-emerald-500/20">
+              <div className="bg-emerald-900/20 p-6 rounded-3xl border border-emerald-500/20 h-full flex flex-col justify-center">
                 <h3 className="text-emerald-400 font-medium uppercase tracking-wider text-sm mb-2">Did You Know?</h3>
-                <p className="text-lg text-emerald-100 font-medium">
+                <p className="text-lg text-emerald-100 font-medium leading-relaxed">
                   {insights.funFact}
                 </p>
               </div>

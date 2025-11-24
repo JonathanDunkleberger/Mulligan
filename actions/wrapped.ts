@@ -1,7 +1,8 @@
 "use server";
 
 import OpenAI from "openai";
-import { MediaItem } from "@/app/_lib/schema";
+import { MediaItem, Category } from "@/app/_lib/schema";
+import { tmdbSearch, igdbSearch, gbooksSearch } from "@/app/_lib/adapters.server";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -10,10 +11,10 @@ const openai = new OpenAI({
 export interface WrappedInsights {
   vibe: string;
   summary: string;
-  masterRec: {
-    title: string;
+  masterRecs: {
+    item: MediaItem;
     reason: string;
-  };
+  }[];
   funFact: string;
   topEra: string;
 }
@@ -40,10 +41,17 @@ export async function generateWrappedInsights(favorites: MediaItem[]): Promise<W
     {
       "vibe": "A short, punchy 3-5 word aesthetic title for their taste (e.g. 'Melancholic Cyberpunk Philosopher' or 'Cozy Cottagecore Gamer')",
       "summary": "A 2-3 sentence deep dive into their specific taste patterns. Be specific about themes (e.g. 'You love stories about AI gaining consciousness, but only if they have a happy ending.'). Connect dots between different media types.",
-      "masterRec": {
-        "title": "ONE single perfect recommendation they likely haven't seen.",
-        "reason": "A compelling pitch for why this specific title bridges their interests."
-      },
+      "masterRecs": [
+        {
+          "title": "Title 1",
+          "category": "film" | "tv" | "anime" | "game" | "book",
+          "reason": "Short pitch why."
+        },
+        { "title": "Title 2", "category": "...", "reason": "..." },
+        { "title": "Title 3", "category": "...", "reason": "..." },
+        { "title": "Title 4", "category": "...", "reason": "..." },
+        { "title": "Title 5", "category": "...", "reason": "..." }
+      ],
       "funFact": "A quirky observation about their data (e.g. '80% of your favorite movies were released in 1999' or 'You have a secret obsession with French directors').",
       "topEra": "The decade or era they gravitate towards most (e.g. 'The Roaring 20s' or 'The Neon 80s')"
     }
@@ -63,7 +71,33 @@ export async function generateWrappedInsights(favorites: MediaItem[]): Promise<W
     const content = completion.choices[0].message.content;
     if (!content) return null;
     
-    return JSON.parse(content) as WrappedInsights;
+    const rawData = JSON.parse(content);
+
+    // Hydrate recommendations with real data
+    const hydratedRecs = await Promise.all(rawData.masterRecs.map(async (rec: any) => {
+      try {
+        let results: MediaItem[] = [];
+        if (rec.category === 'game') results = await igdbSearch(rec.title);
+        else if (rec.category === 'book') results = await gbooksSearch(rec.title);
+        else results = await tmdbSearch(rec.title, rec.category);
+
+        const bestMatch = results[0];
+        if (!bestMatch) return null;
+
+        return {
+          item: bestMatch,
+          reason: rec.reason
+        };
+      } catch (e) {
+        return null;
+      }
+    }));
+
+    return {
+      ...rawData,
+      masterRecs: hydratedRecs.filter(Boolean)
+    } as WrappedInsights;
+
   } catch (error) {
     console.error("Error generating wrapped insights:", error);
     return null;
