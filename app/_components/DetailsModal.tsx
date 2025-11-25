@@ -58,17 +58,38 @@ export default function DetailsModal({
         <DialogTitle className="sr-only">{item.title}</DialogTitle>
         <div className="flex-1 overflow-y-auto scrollbar-hide" id="details-modal-description">
           {/* Hero Section */}
-          <div className="relative h-[50vh] w-full shrink-0">
-            {(item.imageUrl || item.backdropUrl) && (
-              <Image
-                src={item.backdropUrl || item.imageUrl!}
-                alt={item.title}
-                fill
-                className="object-cover opacity-60"
-              />
+          <div className="relative h-[50vh] w-full shrink-0 overflow-hidden">
+            {item.category === "book" && item.imageUrl ? (
+              <>
+                <Image
+                  src={item.imageUrl}
+                  alt={item.title}
+                  fill
+                  className="object-cover blur-xl opacity-40 scale-110"
+                />
+                <div className="absolute inset-0 flex items-center justify-center pb-12 pt-4">
+                  <div className="relative h-full aspect-[2/3] shadow-2xl rounded-lg overflow-hidden border border-white/10">
+                    <Image
+                      src={item.imageUrl}
+                      alt={item.title}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              (item.imageUrl || item.backdropUrl) && (
+                <Image
+                  src={item.backdropUrl || item.imageUrl!}
+                  alt={item.title}
+                  fill
+                  className="object-cover opacity-60"
+                />
+              )
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/60 to-transparent" />
-            <div className="absolute bottom-0 left-0 p-8 w-full">
+            <div className="absolute bottom-0 left-0 p-8 w-full z-10">
               <motion.h1 
                 className="text-4xl md:text-6xl font-black tracking-tight mb-4 text-white drop-shadow-xl"
                 initial={{ opacity: 0, y: 20 }}
@@ -106,6 +127,12 @@ export default function DetailsModal({
                         ~{Math.ceil(item.pageCount * 1 / 60) > 0 ? `${Math.floor(item.pageCount / 60)}h ${item.pageCount % 60}m` : `${item.pageCount}m`} read
                       </span>
                     )}
+                  </div>
+                )}
+                {item.timeToBeat && (
+                  <div className="flex items-center gap-2 text-gray-300">
+                    <Gamepad2 size={16} />
+                    <span>{item.timeToBeat}h to beat</span>
                   </div>
                 )}
               </motion.div>
