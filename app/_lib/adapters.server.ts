@@ -312,8 +312,10 @@ export async function tmdbGetRecommendations(id: string, category: "film" | "tv"
   // Strict filtering for Anime to prevent pollution (e.g. "Severance" appearing in Anime)
   if (category === "anime") {
     results = results.filter((r: any) => {
-      const isAnime = (r.origin_country || []).includes("JP") || (r.genre_ids || []).includes(16);
-      return isAnime;
+      // MUST be Animation (16) AND from Japan (JP) or China (CN)
+      const isAnimation = (r.genre_ids || []).includes(16);
+      const isAsianOrigin = (r.origin_country || []).some((c: string) => ["JP", "CN"].includes(c));
+      return isAnimation && isAsianOrigin;
     });
   }
 
