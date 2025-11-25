@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import type { MediaItem } from "../_lib/schema";
 import { Heart, Plus } from "lucide-react";
@@ -17,6 +18,8 @@ export default function MediaTile({
   onToggleFavorite?: (item: MediaItem) => void;
   showAddHint?: boolean;
 }) {
+  const [imgError, setImgError] = useState(false);
+
   const handleHeartClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onToggleFavorite) {
@@ -24,22 +27,25 @@ export default function MediaTile({
     }
   };
 
+  const hasImage = (item.imageUrl || item.backdropUrl) && !imgError;
+
   return (
     <div 
       className="tile group cursor-pointer relative transition-all duration-300 hover:scale-125 hover:z-50 origin-center"
       onClick={onClick}
     >
       <div className="aspect-video relative overflow-hidden rounded-md bg-[#222]">
-        {item.imageUrl || item.backdropUrl ? (
+        {hasImage ? (
           <Image 
             src={item.backdropUrl || item.imageUrl!} 
             alt={item.title} 
             fill
             className="object-cover"
+            onError={() => setImgError(true)}
           />
         ) : (
-          <div className="w-full h-full grid place-items-center text-gray-400 p-2 text-center text-sm">
-            {item.title}
+          <div className="w-full h-full grid place-items-center text-gray-400 p-2 text-center text-sm bg-zinc-800">
+            <span className="line-clamp-3">{item.title}</span>
           </div>
         )}
       </div>
