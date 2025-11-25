@@ -99,8 +99,13 @@ export default function DetailsModal({
                 )}
                 {item.runtime && (
                   <div className="flex items-center gap-2 text-gray-300">
-                    <Clock size={16} />
+                    {item.category === "book" ? <BookOpen size={16} /> : <Clock size={16} />}
                     <span>{item.runtime}</span>
+                    {item.category === "book" && item.pageCount && (
+                      <span className="text-gray-400 text-sm border-l border-white/20 pl-2 ml-1">
+                        ~{Math.ceil(item.pageCount * 1 / 60) > 0 ? `${Math.floor(item.pageCount / 60)}h ${item.pageCount % 60}m` : `${item.pageCount}m`} read
+                      </span>
+                    )}
                   </div>
                 )}
               </motion.div>
