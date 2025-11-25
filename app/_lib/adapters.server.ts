@@ -396,14 +396,21 @@ export async function igdbGetDetails(id: string): Promise<MediaItem | null> {
       videos.video_id, videos.name,
       platforms.name, websites.url, websites.category,
       dlcs.name, expansions.name,
-      game_modes.name, themes.name,
-      game_time_to_beat.normally, game_time_to_beat.hastly, game_time_to_beat.completely;
+      game_modes.name, themes.name;
     where id = ${id};
   `;
   
   const rows = await igdbQuery("games", q);
   if (!rows || !rows.length) return null;
   const g = rows[0];
+
+  // Fetch Time To Beat separately (reverse relationship)
+  const ttbQuery = `
+    fields normally, hastly, completely;
+    where game_id = ${g.id};
+  `;
+  const ttbRows = await igdbQuery("game_time_to_beats", ttbQuery);
+  const ttb = ttbRows && ttbRows.length > 0 ? ttbRows[0] : null;
   
   const item: MediaItem = {
     id: `igdb:game:${g.id}`,
@@ -432,7 +439,7 @@ export async function igdbGetDetails(id: string): Promise<MediaItem | null> {
       category: String(w.category), // IGDB uses enums, but string is fine for now
       url: w.url
     })),
-    timeToBeat: g.game_time_to_beat ? Math.round(g.game_time_to_beat.normally / 3600) : undefined,
+    timeToBeat: ttb ? Math.round(ttb.normally / 3600) : undefined,
   };
 
   // 5. External Ratings (Steam)

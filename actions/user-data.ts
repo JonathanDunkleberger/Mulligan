@@ -42,7 +42,8 @@ export async function getUserFavorites(): Promise<MediaItem[]> {
         metadata
       )
     `)
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
 
   if (error) {
     console.error("Error fetching favorites:", error);
