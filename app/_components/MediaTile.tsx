@@ -36,13 +36,38 @@ export default function MediaTile({
     >
       <div className="aspect-video relative overflow-hidden rounded-md bg-[#222]">
         {hasImage ? (
-          <Image 
-            src={item.backdropUrl || item.imageUrl!} 
-            alt={item.title} 
-            fill
-            className="object-cover"
-            onError={() => setImgError(true)}
-          />
+          item.category === "book" ? (
+            <>
+              {/* Blurred Background for Books */}
+              <Image 
+                src={item.imageUrl || item.backdropUrl!} 
+                alt={item.title} 
+                fill
+                className="object-cover blur-md scale-110 opacity-50"
+                sizes="(max-width: 768px) 100vw, 280px"
+              />
+              {/* Sharp Foreground for Books */}
+              <div className="absolute inset-2 shadow-xl">
+                <Image 
+                  src={item.imageUrl || item.backdropUrl!} 
+                  alt={item.title} 
+                  fill
+                  className="object-contain drop-shadow-xl"
+                  sizes="(max-width: 768px) 100vw, 280px"
+                  onError={() => setImgError(true)}
+                />
+              </div>
+            </>
+          ) : (
+            <Image 
+              src={item.backdropUrl || item.imageUrl!} 
+              alt={item.title} 
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 280px"
+              onError={() => setImgError(true)}
+            />
+          )
         ) : (
           <div className="w-full h-full grid place-items-center text-gray-400 p-2 text-center text-sm bg-zinc-800">
             <span className="line-clamp-3">{item.title}</span>
