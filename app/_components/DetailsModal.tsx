@@ -54,9 +54,9 @@ export default function DetailsModal({
 
   return (
   <Dialog open onOpenChange={(isOpen: boolean) => { if (!isOpen) onClose(); }}>
-      <DialogContent className="sm:max-w-5xl w-full h-[90vh] p-0 overflow-hidden bg-[#0a0a0a] text-white border-white/10 flex flex-col">
+      <DialogContent className="sm:max-w-5xl w-full h-[90vh] p-0 overflow-hidden bg-[#0a0a0a] text-white border-white/10 flex flex-col" aria-describedby="details-modal-description">
         <DialogTitle className="sr-only">{item.title}</DialogTitle>
-        <div className="flex-1 overflow-y-auto scrollbar-hide">
+        <div className="flex-1 overflow-y-auto scrollbar-hide" id="details-modal-description">
           {/* Hero Section */}
           <div className="relative h-[50vh] w-full shrink-0">
             {(item.imageUrl || item.backdropUrl) && (

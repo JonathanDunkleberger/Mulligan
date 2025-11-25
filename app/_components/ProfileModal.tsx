@@ -17,8 +17,8 @@ export default function ProfileModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open: boolean) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md bg-background text-white border-border">
-        <div className="flex flex-col gap-6 py-4">
+      <DialogContent className="sm:max-w-md bg-background text-white border-border" aria-describedby="profile-modal-description">
+        <div className="flex flex-col gap-6 py-4" id="profile-modal-description">
           <div>
             <h2 className="text-2xl font-bold mb-1">Account</h2>
             <p className="text-gray-400 text-sm">Manage your profile and preferences.</p>
