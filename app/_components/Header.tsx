@@ -22,7 +22,11 @@ export default function Header() {
     <>
       <header className="flex items-center justify-between px-4 md:px-8 h-[60px] bg-background/50 backdrop-blur-md border-b border-white/10 sticky top-0 z-50">
         <div className="flex items-center gap-4 md:gap-8">
-          <Link href="/" className="flex items-center gap-2 text-primary hover:text-accent transition-colors">
+          <Link 
+            href="/" 
+            className="flex items-center gap-2 text-primary hover:text-accent transition-colors"
+            onClick={() => window.dispatchEvent(new Event("mulligan-reset"))}
+          >
             <Image 
               src="/cat-silhouette-on-transparent-background-free-png.webp" 
               alt="Feyris Logo" 

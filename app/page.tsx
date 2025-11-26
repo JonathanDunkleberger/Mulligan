@@ -33,6 +33,16 @@ export default function Page() {
   // };
 
   useEffect(() => {
+    const handleReset = () => {
+      setQuery("");
+      setResults([]);
+      setMode("browse");
+    };
+    window.addEventListener("mulligan-reset", handleReset);
+    return () => window.removeEventListener("mulligan-reset", handleReset);
+  }, []);
+
+  useEffect(() => {
     async function loadData() {
       try {
         // 1. Load Favorites IDs
