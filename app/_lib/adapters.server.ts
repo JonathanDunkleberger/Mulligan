@@ -1,5 +1,10 @@
 import { ENV } from "./env";
 import type { Category, MediaItem } from "./schema";
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 /* -------------------- TMDB -------------------- */
 const TMDB_BASE = "https://api.themoviedb.org/3";
@@ -399,6 +404,25 @@ export async function igdbSearch(query: string): Promise<MediaItem[]> {
   }));
 }
 
+async function estimateGameLength(title: string): Promise<number | undefined> {
+  try {
+    const completion = await openai.chat.completions.create({
+      messages: [
+        { role: "system", content: "You are a video game expert. Provide the estimated main story completion time in hours for the given game. Return ONLY the number." },
+        { role: "user", content: `How long to beat ${title}?` }
+      ],
+      model: "gpt-3.5-turbo",
+      max_tokens: 10,
+    });
+    const content = completion.choices[0].message.content?.trim();
+    const hours = parseInt(content || "");
+    return isNaN(hours) ? undefined : hours;
+  } catch (e) {
+    console.error("OpenAI estimation failed:", e);
+    return undefined;
+  }
+}
+
 export async function igdbGetDetails(id: string): Promise<MediaItem | null> {
   if (!ENV.TWITCH_CLIENT_ID || !ENV.TWITCH_CLIENT_SECRET) return null;
   
@@ -469,7 +493,7 @@ export async function igdbGetDetails(id: string): Promise<MediaItem | null> {
       category: String(w.category), // IGDB uses enums, but string is fine for now
       url: w.url
     })),
-    timeToBeat: ttb ? Math.round(ttb.normally / 3600) : undefined,
+    timeToBeat: ttb ? Math.round(ttb.normally / 3600) : await estimateGameLength(g.name),
     contentRating,
     soundtrackUrl: getSoundtrackUrl(g.name, "game"),
   };
