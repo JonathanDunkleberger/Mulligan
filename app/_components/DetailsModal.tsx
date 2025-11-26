@@ -127,6 +127,16 @@ export default function DetailsModal({
                         ~{Math.ceil(item.pageCount * 1 / 60) > 0 ? `${Math.floor(item.pageCount / 60)}h ${item.pageCount % 60}m` : `${item.pageCount}m`} read
                       </span>
                     )}
+                    {(item.category === "tv" || item.category === "anime") && item.seasons && (
+                      <span className="text-gray-400 text-sm border-l border-white/20 pl-2 ml-1">
+                        ~{(() => {
+                          const totalEps = item.seasons.reduce((acc, s) => acc + (s.episode_count || 0), 0);
+                          const runtime = parseInt(item.runtime || "0");
+                          const totalMins = totalEps * (runtime || 24); // Default to 24m if runtime parse fails
+                          return totalMins > 0 ? `${Math.floor(totalMins / 60)}h ${totalMins % 60}m` : "";
+                        })()} binge
+                      </span>
+                    )}
                   </div>
                 )}
                 {item.timeToBeat && (

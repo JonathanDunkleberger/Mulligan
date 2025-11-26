@@ -21,8 +21,28 @@ export default function WrappedPage() {
         setFavorites(items);
         
         if (items.length >= 3) {
+          // Check Local Storage Cache
+          const cacheKey = "mulligan:wrapped_insights";
+          const cached = localStorage.getItem(cacheKey);
+          if (cached) {
+            const { data, timestamp, count } = JSON.parse(cached);
+            // Use cache if less than 1 hour old AND favorites count hasn't changed
+            if (Date.now() - timestamp < 3600 * 1000 && count === items.length) {
+              setInsights(data);
+              setLoading(false);
+              return;
+            }
+          }
+
           const data = await generateWrappedInsights(items);
           setInsights(data);
+          
+          // Save to Cache
+          localStorage.setItem(cacheKey, JSON.stringify({
+            data,
+            timestamp: Date.now(),
+            count: items.length
+          }));
         }
       } catch (e) {
         console.error(e);

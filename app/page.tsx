@@ -39,24 +39,49 @@ export default function Page() {
         const ids = await getUserFavoriteIds();
         setLikedIds(new Set(ids));
 
-        // 2. Load Trending
-        const categories: Category[] = ["film", "tv", "anime", "game", "book"];
-        const newPopular: Record<Category, MediaItem[]> = { film: [], game: [], anime: [], tv: [], book: [] };
+        // 2. Load Trending (with Cache)
+        const cacheKey = "mulligan:trending_cache";
+        const cached = localStorage.getItem(cacheKey);
+        let newPopular: Record<Category, MediaItem[]> = { film: [], game: [], anime: [], tv: [], book: [] };
+        let loadedFromCache = false;
 
-        await Promise.all(categories.map(async (cat) => {
-          // Map 'film' to 'movie' for the API query if needed, but our API handles 'film'
-          const res = await fetch(`/api/trending?category=${cat}`);
-          if (!res.ok) return;
-          const data = await res.json();
-          newPopular[cat] = data;
-        }));
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          // Cache valid for 30 minutes
+          if (Date.now() - timestamp < 30 * 60 * 1000) {
+            newPopular = data;
+            setPopular(data);
+            loadedFromCache = true;
+            
+            // Set hero immediately from cache
+            const allItems = Object.values(data).flat() as MediaItem[];
+            if (allItems.length > 0) {
+              setHeroItem(allItems[Math.floor(Math.random() * allItems.length)]);
+            }
+          }
+        }
 
-        setPopular(newPopular);
-        
-        // Pick a random hero item
-        const allItems = Object.values(newPopular).flat();
-        if (allItems.length > 0) {
-          setHeroItem(allItems[Math.floor(Math.random() * allItems.length)]);
+        if (!loadedFromCache) {
+          const categories: Category[] = ["film", "tv", "anime", "game", "book"];
+          
+          await Promise.all(categories.map(async (cat) => {
+            const res = await fetch(`/api/trending?category=${cat}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            newPopular[cat] = data;
+          }));
+
+          setPopular(newPopular);
+          localStorage.setItem(cacheKey, JSON.stringify({
+            data: newPopular,
+            timestamp: Date.now()
+          }));
+          
+          // Pick a random hero item
+          const allItems = Object.values(newPopular).flat();
+          if (allItems.length > 0) {
+            setHeroItem(allItems[Math.floor(Math.random() * allItems.length)]);
+          }
         }
 
       } catch (error) {
@@ -207,6 +232,19 @@ export default function Page() {
                 className={likedIds.size < 1 ? "opacity-50" : ""}
               >
                 For You
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  const allItems = Object.values(popular).flat();
+                  if (allItems.length > 0) {
+                    const random = allItems[Math.floor(Math.random() * allItems.length)];
+                    setSelectedItem(random);
+                  }
+                }}
+                title="Feeling Lucky"
+              >
+                🎲
               </Button>
             </div>
           </div>
