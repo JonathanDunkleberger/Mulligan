@@ -201,14 +201,26 @@ export default function Page() {
 
   const rails = useMemo(() => {
     const source = mode === "recommend" ? recs : popular;
-    return ORDER.map((cat) => ({
-      title: mode === "recommend" 
-        ? (cat === "film" ? "Movies for you" : cat === "game" ? "Games for you" : cat === "anime" ? "Anime for you" : cat === "tv" ? "TV for you" : "Books for you")
-        : (cat === "film" ? "Trending Films" : cat === "game" ? "Popular Games" : cat === "anime" ? "Top Anime" : cat === "tv" ? "Trending TV" : "Popular Books"),
-      category: cat as Category, 
-      items: source[cat] || []
-    })).filter(r => r.items.length > 0);
-  }, [mode, recs, popular]);
+    return ORDER.map((cat) => {
+      const rawItems = source[cat] || [];
+      // Filter out liked items to keep discovery fresh
+      // If in "recommend" mode, the API already filters, but double check client-side
+      // If in "browse" (trending) mode, this is crucial
+      const filtered = rawItems.filter(item => !likedIds.has(item.id));
+      
+      // Slice to keep UI consistent (e.g. 20 items)
+      // We fetch ~50 items from API to allow for this filtering buffer
+      const displayItems = filtered.slice(0, 20);
+
+      return {
+        title: mode === "recommend" 
+          ? (cat === "film" ? "Movies for you" : cat === "game" ? "Games for you" : cat === "anime" ? "Anime for you" : cat === "tv" ? "TV for you" : "Books for you")
+          : (cat === "film" ? "Trending Films" : cat === "game" ? "Popular Games" : cat === "anime" ? "Top Anime" : cat === "tv" ? "Trending TV" : "Popular Books"),
+        category: cat as Category, 
+        items: displayItems
+      };
+    }).filter(r => r.items.length > 0);
+  }, [mode, recs, popular, likedIds]);
 
   return (
     <>

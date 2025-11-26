@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
-import { Play, Heart, Star, Calendar, Clock, Globe, BookOpen, Gamepad2 } from "lucide-react";
+import { Play, Heart, Star, Calendar, Clock, Globe, BookOpen, Gamepad2, Music, Trophy } from "lucide-react";
 
 function Pill({ children }: { children: React.ReactNode }) {
   return (
@@ -112,6 +112,11 @@ export default function DetailsModal({
                     <span>{item.year}</span>
                   </div>
                 )}
+                {item.contentRating && (
+                   <div className="px-2 py-0.5 border border-white/40 rounded text-xs font-bold text-gray-200 uppercase">
+                      {item.contentRating}
+                   </div>
+                )}
                 {item.rating != null && (
                   <div className="flex items-center gap-2 text-green-400 font-bold">
                     <Star className="fill-current" size={16} />
@@ -171,6 +176,18 @@ export default function DetailsModal({
                   >
                     <BookOpen size={20} />
                     Read Preview
+                  </a>
+                )}
+
+                {item.soundtrackUrl && (
+                  <a 
+                    href={item.soundtrackUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-6 py-2 rounded-md font-bold bg-[#1DB954] hover:bg-[#1ed760] text-black transition-colors"
+                  >
+                    <Music size={20} />
+                    Soundtrack
                   </a>
                 )}
                 
@@ -305,6 +322,18 @@ export default function DetailsModal({
             {/* Right Column (Sidebar) */}
             <div className="space-y-6">
               
+              {item.awards && (
+                <div className="bg-gradient-to-br from-yellow-900/20 to-transparent rounded-xl p-5 border border-yellow-500/20">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-yellow-500 mb-3 flex items-center gap-2">
+                    <Trophy size={14} />
+                    Awards
+                  </h4>
+                  <p className="text-sm text-gray-300 leading-relaxed">
+                    {item.awards}
+                  </p>
+                </div>
+              )}
+
               {/* Watch Providers */}
               {item.watchProviders && item.watchProviders.length > 0 && (
                 <div className="bg-zinc-900/50 rounded-xl p-5 border border-white/5">

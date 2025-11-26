@@ -71,6 +71,10 @@ export type MediaItem = {
   isbn?: string;
   publisherName?: string;
   previewLink?: string;
+
+  // New Fields
+  awards?: string;
+  soundtrackUrl?: string;
 };
 
 

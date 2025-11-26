@@ -59,6 +59,12 @@ async function omdbFetch(imdbId: string) {
   }
 }
 
+function getSoundtrackUrl(title: string, category: Category): string | undefined {
+  if (category === "book") return undefined;
+  const query = encodeURIComponent(`${title} Soundtrack`);
+  return `https://open.spotify.com/search/${query}`;
+}
+
 async function jikanFetch(title: string) {
   // Jikan is free, no key needed. Rate limited to 3 requests/second.
   // We search for the anime by title.
@@ -205,8 +211,16 @@ export async function tmdbGetDetails(category: "film" | "tv" | "anime", id: stri
       item.metacriticRating = omdb.Metascore !== "N/A" ? `${omdb.Metascore}/100` : undefined;
       const rt = omdb.Ratings?.find((r: any) => r.Source === "Rotten Tomatoes");
       if (rt) item.rottenTomatoesRating = rt.Value;
+      
+      // Awards
+      if (omdb.Awards && omdb.Awards !== "N/A") {
+        item.awards = omdb.Awards;
+      }
     }
   }
+
+  // Soundtrack
+  item.soundtrackUrl = getSoundtrackUrl(item.title, category);
 
   if (category === "anime") {
     // Try to find MAL score via Jikan
@@ -282,17 +296,17 @@ export async function tmdbPopular(): Promise<Record<"film" | "tv" | "anime", Med
   const film = [
     ...(moviePop1?.results || []),
     ...(moviePop2?.results || [])
-  ].map((r: any) => mapTmdbListItem(r, "film")).slice(0, 24);
+  ].map((r: any) => mapTmdbListItem(r, "film")).slice(0, 50);
 
   const tv = [
     ...(tvPop1?.results || []),
     ...(tvPop2?.results || [])
-  ].map((r: any) => mapTmdbListItem(r, "tv")).slice(0, 24);
+  ].map((r: any) => mapTmdbListItem(r, "tv")).slice(0, 50);
 
   const anime = [
     ...(animePop1?.results || []),
     ...(animePop2?.results || [])
-  ].map((r: any) => mapTmdbListItem(r, "anime")).slice(0, 24);
+  ].map((r: any) => mapTmdbListItem(r, "anime")).slice(0, 50);
 
   return { film, tv, anime };
 }
@@ -396,7 +410,8 @@ export async function igdbGetDetails(id: string): Promise<MediaItem | null> {
       videos.video_id, videos.name,
       platforms.name, websites.url, websites.category,
       dlcs.name, expansions.name,
-      game_modes.name, themes.name;
+      game_modes.name, themes.name,
+      age_ratings.rating, age_ratings.category;
     where id = ${id};
   `;
   
@@ -412,6 +427,21 @@ export async function igdbGetDetails(id: string): Promise<MediaItem | null> {
   const ttbRows = await igdbQuery("game_time_to_beats", ttbQuery);
   const ttb = ttbRows && ttbRows.length > 0 ? ttbRows[0] : null;
   
+  // Map Age Ratings
+  let contentRating: string | undefined;
+  if (g.age_ratings) {
+    // Prefer ESRB (Category 1) or PEGI (Category 2)
+    const esrb = g.age_ratings.find((r: any) => r.category === 1);
+    const pegi = g.age_ratings.find((r: any) => r.category === 2);
+    const r = esrb || pegi;
+    
+    if (r) {
+      // IGDB Enums: 6=RP, 7=EC, 8=E, 9=E10, 10=T, 11=M, 12=AO
+      const map: Record<number, string> = { 8: "E", 9: "E10+", 10: "T", 11: "M", 12: "AO" };
+      if (map[r.rating]) contentRating = `Rated ${map[r.rating]}`;
+    }
+  }
+
   const item: MediaItem = {
     id: `igdb:game:${g.id}`,
     source: "igdb",
@@ -440,6 +470,8 @@ export async function igdbGetDetails(id: string): Promise<MediaItem | null> {
       url: w.url
     })),
     timeToBeat: ttb ? Math.round(ttb.normally / 3600) : undefined,
+    contentRating,
+    soundtrackUrl: getSoundtrackUrl(g.name, "game"),
   };
 
   // 5. External Ratings (Steam)
@@ -513,7 +545,7 @@ export async function igdbPopular(): Promise<MediaItem[]> {
       creators: g.involved_companies?.filter((c: any) => c.developer).map((c: any) => c.company.name),
     });
 
-    if (items.length >= 24) break;
+    if (items.length >= 50) break;
   }
 
   return items;
@@ -729,7 +761,7 @@ export async function gbooksPopular(): Promise<MediaItem[]> {
   ];
 
   // Pick 24 random titles to ensure variety on refresh
-  const selected = CURATED_BOOKS.sort(() => 0.5 - Math.random()).slice(0, 24);
+  const selected = CURATED_BOOKS.sort(() => 0.5 - Math.random()).slice(0, 40);
   
   const promises = selected.map(async (query) => {
     const url = new URL("https://www.googleapis.com/books/v1/volumes");
@@ -890,6 +922,7 @@ export async function gbooksGetDetails(id: string): Promise<MediaItem | null> {
     pageCount: info.pageCount,
     publisherName: info.publisher,
     previewLink: info.previewLink,
-    isbn: info.industryIdentifiers?.find((i: any) => i.type === "ISBN_13")?.identifier
+    isbn: info.industryIdentifiers?.find((i: any) => i.type === "ISBN_13")?.identifier,
+    contentRating: info.maturityRating === "MATURE" ? "Mature" : undefined,
   };
 }
