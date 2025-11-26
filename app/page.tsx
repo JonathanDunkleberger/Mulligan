@@ -9,9 +9,10 @@ import MediaTile from "./_components/MediaTile";
 import DetailsModal from "./_components/DetailsModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getUserFavoriteIds } from "@/actions/user-data";
+import { getUserFavoriteIds, getUserDislikedIds } from "@/actions/user-data";
 import { saveAndFavoriteItem } from "@/actions/save-and-favorite";
 import { removeFavorite } from "@/actions/remove-favorite";
+import { dislikeItem } from "@/actions/dislike-item";
 
 type Mode = "browse" | "search" | "recommend";
 const ORDER: Category[] = ["film", "tv", "anime", "game", "book"];
@@ -27,6 +28,7 @@ export default function Page() {
   const [heroItem, setHeroItem] = useState<MediaItem | null>(null);
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const [dislikedIds, setDislikedIds] = useState<Set<string>>(new Set());
 
   // const handleItemClick = (item: MediaItem) => {
   //   router.push(`/detail/${item.source}/${item.category}/${item.sourceId}`);
@@ -45,9 +47,13 @@ export default function Page() {
   useEffect(() => {
     async function loadData() {
       try {
-        // 1. Load Favorites IDs
-        const ids = await getUserFavoriteIds();
+        // 1. Load Favorites & Dislikes IDs
+        const [ids, dislikes] = await Promise.all([
+          getUserFavoriteIds(),
+          getUserDislikedIds()
+        ]);
         setLikedIds(new Set(ids));
+        setDislikedIds(new Set(dislikes));
 
         // 2. Load Trending (with Cache)
         const cacheKey = "mulligan:trending_cache";
@@ -112,6 +118,15 @@ export default function Page() {
       return next;
     });
 
+    // If it was disliked, remove from disliked
+    if (dislikedIds.has(item.id)) {
+      setDislikedIds(prev => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+    }
+
     if (!isLiked) {
       // Add to favorites
       const result = await saveAndFavoriteItem(item);
@@ -136,6 +151,35 @@ export default function Page() {
             return next;
           });
       }
+    }
+  };
+
+  const handleDislike = async (item: MediaItem) => {
+    // Optimistic Update
+    setDislikedIds(prev => {
+      const next = new Set(prev);
+      next.add(item.id);
+      return next;
+    });
+
+    // If it was liked, remove from liked
+    if (likedIds.has(item.id)) {
+      setLikedIds(prev => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+    }
+
+    const result = await dislikeItem(item);
+    if (!result.success) {
+      console.error("Failed to dislike item:", result.error);
+      // Revert on failure
+      setDislikedIds(prev => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
     }
   };
 
@@ -277,13 +321,14 @@ export default function Page() {
               <div className="px-8">
                 <h2 className="text-2xl font-bold mb-6">Results for "{query}"</h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  {results.map((item) => (
+                  {results.filter(item => !dislikedIds.has(item.id)).map((item) => (
                     <MediaTile
                       key={item.id}
                       item={item}
                       onClick={() => setSelectedItem(item)}
                       isFavorited={likedIds.has(item.id)}
                       onToggleFavorite={() => handleToggleFavorite(item)}
+                      onDislike={() => handleDislike(item)}
                     />
                   ))}
                 </div>
@@ -296,10 +341,11 @@ export default function Page() {
                       {rail.title}
                     </h3>
                     <MediaCarousel 
-                      items={rail.items} 
+                      items={rail.items.filter(item => !dislikedIds.has(item.id))} 
                       onSelect={setSelectedItem} 
                       likedIds={likedIds}
                       onToggleFavorite={handleToggleFavorite}
+                      onDislike={handleDislike}
                     />
                   </div>
                 ))}

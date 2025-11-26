@@ -58,4 +58,31 @@ export async function getUserFavorites(): Promise<MediaItem[]> {
   });
 }
 
+export async function getUserDislikedIds(): Promise<string[]> {
+  const userId = "guest_user_123";
+  
+  const { data, error } = await supabase
+    .from("dislikes")
+    .select(`
+      media_items (
+        source,
+        source_id,
+        type
+      )
+    `)
+    .eq("user_id", userId);
+
+  if (error) {
+    // If table doesn't exist yet, this might fail, but we'll handle gracefully
+    console.error("Error fetching dislikes:", error);
+    return [];
+  }
+
+  return data.map((row: any) => {
+    const item = row.media_items;
+    if (!item) return null;
+    return `${item.source}:${item.type}:${item.source_id}`; 
+  }).filter((id): id is string => id !== null);
+}
+
 

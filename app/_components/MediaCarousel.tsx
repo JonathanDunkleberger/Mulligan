@@ -9,12 +9,14 @@ export default function MediaCarousel({
   items,
   onSelect,
   likedIds,
-  onToggleFavorite
+  onToggleFavorite,
+  onDislike
 }: { 
   items: MediaItem[];
   onSelect?: (item: MediaItem) => void;
   likedIds?: Set<string>;
   onToggleFavorite?: (item: MediaItem) => void;
+  onDislike?: (item: MediaItem) => void;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
 
@@ -43,6 +45,7 @@ export default function MediaCarousel({
                 onClick={() => onSelect?.(it)}
                 isFavorited={likedIds?.has(it.id)}
                 onToggleFavorite={onToggleFavorite}
+                onDislike={onDislike}
               />
             </div>
           ))}

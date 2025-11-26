@@ -3,19 +3,21 @@
 import { useState } from "react";
 import Image from "next/image";
 import type { MediaItem } from "../_lib/schema";
-import { Heart, Plus } from "lucide-react";
+import { Heart, Plus, ThumbsDown } from "lucide-react";
 
 export default function MediaTile({
   item,
   onClick,
   isFavorited = false,
   onToggleFavorite,
+  onDislike,
   showAddHint
 }: {
   item: MediaItem;
   onClick?: () => void;
   isFavorited?: boolean;
   onToggleFavorite?: (item: MediaItem) => void;
+  onDislike?: (item: MediaItem) => void;
   showAddHint?: boolean;
 }) {
   const [imgError, setImgError] = useState(false);
@@ -24,6 +26,13 @@ export default function MediaTile({
     e.stopPropagation();
     if (onToggleFavorite) {
       onToggleFavorite(item);
+    }
+  };
+
+  const handleDislikeClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onDislike) {
+      onDislike(item);
     }
   };
 
@@ -95,6 +104,13 @@ export default function MediaTile({
             title="More Details"
           >
             <Plus size={16} strokeWidth={3} />
+          </button>
+          <button 
+            className="w-8 h-8 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white rounded-full flex items-center justify-center transition-colors border border-white/10 cursor-pointer"
+            onClick={handleDislikeClick}
+            title="Not for me"
+          >
+            <ThumbsDown size={14} className="text-gray-300 hover:text-white" />
           </button>
         </div>
 
