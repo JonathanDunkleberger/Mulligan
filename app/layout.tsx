@@ -3,7 +3,7 @@ import Header from "./_components/Header";
 import ChristmasSnow from "./_components/ChristmasSnow";
 
 export const metadata = {
-  title: "Mulligan — Media Recs",
+  title: "Feyris — Media Recs",
   description: "Pick favorites across film, games, anime, TV, and books, then get recommendations."
 };
 
