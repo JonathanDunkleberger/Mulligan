@@ -422,7 +422,7 @@ export async function igdbGetDetails(id: string): Promise<MediaItem | null> {
   // Fetch Time To Beat separately (reverse relationship)
   const ttbQuery = `
     fields normally, hastly, completely;
-    where game_id = ${g.id};
+    where game = ${g.id};
   `;
   const ttbRows = await igdbQuery("game_time_to_beats", ttbQuery);
   const ttb = ttbRows && ttbRows.length > 0 ? ttbRows[0] : null;
