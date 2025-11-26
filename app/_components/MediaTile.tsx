@@ -45,9 +45,9 @@ export default function MediaTile({
     >
       <div className="aspect-video relative overflow-hidden rounded-md bg-[#222]">
         {hasImage ? (
-          (item.category === "book" || item.category === "game") ? (
+          (item.category === "book") ? (
             <>
-              {/* Blurred Background for Books & Games */}
+              {/* Blurred Background for Books */}
               <Image 
                 src={item.imageUrl || item.backdropUrl!} 
                 alt={item.title} 
@@ -55,7 +55,7 @@ export default function MediaTile({
                 className="object-cover blur-md scale-110 opacity-50"
                 sizes="(max-width: 768px) 100vw, 280px"
               />
-              {/* Sharp Foreground for Books & Games */}
+              {/* Sharp Foreground for Books */}
               <div className="absolute inset-2 shadow-xl">
                 <Image 
                   src={item.imageUrl || item.backdropUrl!} 
