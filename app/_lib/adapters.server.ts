@@ -493,7 +493,7 @@ export async function igdbGetDetails(id: string): Promise<MediaItem | null> {
       category: String(w.category), // IGDB uses enums, but string is fine for now
       url: w.url
     })),
-    timeToBeat: ttb ? Math.round(ttb.normally / 3600) : await estimateGameLength(g.name),
+    timeToBeat: (ttb?.normally ? Math.round(ttb.normally / 3600) : undefined) || await estimateGameLength(g.name),
     contentRating,
     soundtrackUrl: getSoundtrackUrl(g.name, "game"),
   };
