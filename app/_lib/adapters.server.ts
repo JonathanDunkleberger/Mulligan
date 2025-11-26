@@ -408,7 +408,7 @@ async function estimateGameLength(title: string): Promise<number | undefined> {
   try {
     const completion = await openai.chat.completions.create({
       messages: [
-        { role: "system", content: "You are a video game expert. Provide the estimated main story completion time in hours for the given game. Return ONLY the number." },
+        { role: "system", content: "You are a video game expert. Provide the estimated main story completion time in hours for the given game. Return ONLY the number of hours as an integer. Do not add text." },
         { role: "user", content: `How long to beat ${title}?` }
       ],
       model: "gpt-3.5-turbo",
@@ -445,8 +445,8 @@ export async function igdbGetDetails(id: string): Promise<MediaItem | null> {
 
   // Fetch Time To Beat separately (reverse relationship)
   const ttbQuery = `
-    fields normally, hastly, completely;
-    where game = ${g.id};
+    fields normally, hastily, completely;
+    where game_id = ${g.id};
   `;
   const ttbRows = await igdbQuery("game_time_to_beats", ttbQuery);
   const ttb = ttbRows && ttbRows.length > 0 ? ttbRows[0] : null;
